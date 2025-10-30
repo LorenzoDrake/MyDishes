@@ -750,6 +750,57 @@ nav::-webkit-scrollbar {
     color: white;
     font-size: 12px;
 }
+
+.dish-image {
+    height: 140px;
+    background: linear-gradient(45deg, var(--primary), var(--secondary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.5rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.dish-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.dish-image i {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.dish-card:hover .dish-image img {
+    transform: scale(1.05);
+}
+
+/* Индикатор загрузки */
+.dish-image.loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 30px;
+    height: 30px;
+    border: 3px solid transparent;
+    border-top: 3px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 2;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
     </style>
 </head>
 <body>
@@ -870,6 +921,45 @@ nav::-webkit-scrollbar {
     </div>
 
 <script>
+
+const GOOGLE_API_KEY = 'AIzaSyCl37ZkbfqSsUMQZTeg_mRjAy7IiWmjTs0';
+const GOOGLE_SEARCH_ENGINE_ID = 'c19173fd7668741df';
+
+// Функция для получения изображения через Google Custom Search
+async function getDishImageFromGoogle(dishName) {
+    if (!GOOGLE_API_KEY || !GOOGLE_SEARCH_ENGINE_ID) {
+        console.warn('Google API keys not configured');
+        return null;
+    }
+    
+    try {
+        const query = `${dishName} food recipe cooking`.substring(0, 100);
+        const url = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&cx=${GOOGLE_SEARCH_ENGINE_ID}&key=${GOOGLE_API_KEY}&searchType=image&imgSize=medium&num=1&safe=active`;
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            return data.items[0].link;
+        } else {
+            console.log('No images found for:', dishName);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error fetching image from Google:', error);
+        return null;
+    }
+}
+
+// Кэш для уже найденных изображений (чтобы не делать запросы повторно)
+const imageCache = new Map();
+
+
     // Инициализация Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyDcguAmbPrkfHvPnKiD9TtbKkNaXkSbGzU",
@@ -1700,7 +1790,8 @@ function resetDishForm() {
         saveShoppingListToFirebase();
     }
     
-function loadDishes() {
+// Обновленная функция загрузки блюд
+async function loadDishes() {
     dishesContainer.innerHTML = '';
     
     if (dishes.length === 0) {
@@ -1714,33 +1805,9 @@ function loadDishes() {
         return;
     }
     
+    // Сначала показываем все блюда без изображений
     dishes.forEach(dish => {
-        const dishCard = document.createElement('div');
-        dishCard.className = 'dish-card';
-        
-        const ingredientsText = dish.ingredients.map(ing => ing.name).join(', ');
-        
-        dishCard.innerHTML = `
-            <div class="dish-image">
-                <i class="fas fa-utensils"></i>
-            </div>
-            <div class="dish-content">
-                <div class="dish-title">${dish.name}</div>
-                <div class="dish-ingredients">${ingredientsText}</div>
-                <div class="dish-actions">
-                    <button class="btn btn-secondary select-dish" data-id="${dish.id}">
-                        <i class="fas fa-calendar-plus"></i> Выбрать
-                    </button>
-                    <button class="btn edit-dish" data-id="${dish.id}" style="background: #4CAF50; color: white; width: fit-content;">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-danger delete-dish" data-id="${dish.id}">
-                        <i class="fas fa-trash"></i> Удалить
-                    </button>
-                </div>
-            </div>
-        `;
-        
+        const dishCard = createDishCard(dish);
         dishesContainer.appendChild(dishCard);
     });
     
@@ -1760,7 +1827,7 @@ function loadDishes() {
         });
     });
     
-    // ДОБАВЛЯЕМ ОБРАБОТЧИКИ ДЛЯ КНОПОК РЕДАКТИРОВАНИЯ
+    // Добавляем обработчики для кнопок редактирования
     document.querySelectorAll('.edit-dish').forEach(button => {
         button.addEventListener('click', function() {
             const dishId = parseInt(this.getAttribute('data-id'));
@@ -1770,7 +1837,31 @@ function loadDishes() {
     
     // Обновляем опции в селектах недельного плана
     updateWeekPlanSelects();
+    
+    // Затем асинхронно загружаем изображения
+    dishes.forEach(async (dish, index) => {
+        if (!dish.imageUrl) {
+            // Проверяем кэш
+            if (imageCache.has(dish.name.toLowerCase())) {
+                dish.imageUrl = imageCache.get(dish.name.toLowerCase());
+                await saveDishImage(dish.id, dish.imageUrl);
+                updateDishCardImage(dish.id, dish.imageUrl);
+            } else {
+                // Запрашиваем новое изображение
+                const imageUrl = await getDishImageFromGoogle(dish.name);
+                if (imageUrl) {
+                    dish.imageUrl = imageUrl;
+                    imageCache.set(dish.name.toLowerCase(), imageUrl);
+                    await saveDishImage(dish.id, imageUrl);
+                    updateDishCardImage(dish.id, imageUrl);
+                }
+            }
+        }
+    });
 }
+
+
+
         
 
     function loadWeekPlan() {
@@ -2406,7 +2497,105 @@ function editDish(dishId) {
     window.scrollTo(0, 0);
 }
 
+// Функция для сохранения изображения в Firebase
+async function saveDishImage(dishId, imageUrl) {
+    const dish = dishes.find(d => d.id === dishId);
+    if (dish) {
+        dish.imageUrl = imageUrl;
+        await saveDishesToFirebase();
+    }
+}
 
+// Функция обновления изображения в карточке
+function updateDishCardImage(dishId, imageUrl) {
+    const dishCard = document.querySelector(`.dish-card .select-dish[data-id="${dishId}"]`)?.closest('.dish-card');
+    if (dishCard) {
+        const dishImage = dishCard.querySelector('.dish-image');
+        dishImage.innerHTML = `<img src="${imageUrl}" alt="${dishes.find(d => d.id === dishId)?.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" loading="lazy">`;
+    }
+}
+
+function createDishCard(dish) {
+    const dishCard = document.createElement('div');
+    dishCard.className = 'dish-card';
+    
+    const ingredientsText = dish.ingredients.map(ing => ing.name).join(', ');
+    
+    // Определяем содержимое для изображения
+    let imageContent = '';
+    if (dish.imageUrl) {
+        imageContent = `
+            <img src="${dish.imageUrl}" alt="${dish.name}" 
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                 loading="lazy">
+            <i class="fas fa-utensils" style="display: none;"></i>
+        `;
+    } else {
+        imageContent = `
+            <img src="" alt="" style="display: none;">
+            <i class="fas fa-utensils"></i>
+        `;
+    }
+    
+    dishCard.innerHTML = `
+        <div class="dish-image">
+            ${imageContent}
+        </div>
+        <div class="dish-content">
+            <div class="dish-title">${dish.name}</div>
+            <div class="dish-ingredients">${ingredientsText}</div>
+            <div class="dish-actions">
+                <button class="btn btn-secondary select-dish" data-id="${dish.id}">
+                    <i class="fas fa-calendar-plus"></i> Выбрать
+                </button>
+                <button class="btn edit-dish" data-id="${dish.id}" style="background: #4CAF50; color: white; width: fit-content;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-danger delete-dish" data-id="${dish.id}">
+                    <i class="fas fa-trash"></i> Удалить
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Добавляем обработчики событий
+    addDishCardEventListeners(dishCard, dish.id);
+    
+    return dishCard;
+}
+// Функция для добавления обработчиков событий (вынесена для переиспользования)
+function addDishCardEventListeners(dishCard, dishId) {
+    // Обработчик для кнопки выбора
+    dishCard.querySelector('.select-dish').addEventListener('click', function() {
+        selectDishForWeek(dishId);
+    });
+    
+    // Обработчик для кнопки редактирования
+    dishCard.querySelector('.edit-dish').addEventListener('click', function() {
+        editDish(dishId);
+    });
+    
+    // Обработчик для кнопки удаления
+    dishCard.querySelector('.delete-dish').addEventListener('click', function() {
+        deleteDish(dishId);
+    });
+}
+
+// Функция для принудительного обновления изображений блюда
+async function refreshDishImage(dishId) {
+    const dish = dishes.find(d => d.id === dishId);
+    if (dish) {
+        const imageUrl = await getDishImageFromGoogle(dish.name);
+        if (imageUrl) {
+            dish.imageUrl = imageUrl;
+            imageCache.set(dish.name.toLowerCase(), imageUrl);
+            await saveDishImage(dishId, imageUrl);
+            updateDishCardImage(dishId, imageUrl);
+            return true;
+        }
+    }
+    return false;
+}
 </script>
 </body>
 </html>
