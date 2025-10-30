@@ -802,6 +802,9 @@ nav::-webkit-scrollbar {
                 </div>
                 
                 <button type="submit" class="btn"><i class="fas fa-save"></i> Сохранить блюдо</button>
+				<button type="button" class="btn btn-secondary" id="cancel-edit" style="display: none; margin-top: 10px;">
+					<i class="fas fa-times"></i> Отменить редактирование
+				</button>
             </form>
         </section>
 
@@ -1374,6 +1377,10 @@ const ingredientsDB = [
 
     // Инициализация приложения
     document.addEventListener('DOMContentLoaded', function() {
+	// Обработчик отмены редактирования
+document.getElementById('cancel-edit').addEventListener('click', function() {
+    resetDishForm();
+});
         // Навигация между секциями
         navButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -1443,54 +1450,86 @@ ingredientSearch.addEventListener('input', function() {
             displaySearchResults(filteredIngredients, fridgeSearchResults, addToFridge);
         });
         
-        // Добавление нового блюда
-        addDishForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const dishName = document.getElementById('dish-name').value;
-            const dishDescription = document.getElementById('dish-description').value;
-            
-            // Получаем выбранные ингредиенты
-            const ingredients = [];
-            selectedIngredients.querySelectorAll('.ingredient-tag').forEach(tag => {
-                const id = parseInt(tag.getAttribute('data-id'));
-                const name = tag.getAttribute('data-name');
-                const icon = tag.getAttribute('data-icon');
-                ingredients.push({ id, name, icon });
-            });
-            
-            if (ingredients.length === 0) {
-                alert('Добавьте хотя бы один ингредиент');
-                return;
-            }
-            
-            // Создаем новое блюдо
-            const newDish = {
-                id: Date.now(),
+// Добавление нового блюда
+addDishForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const dishName = document.getElementById('dish-name').value;
+    const dishDescription = document.getElementById('dish-description').value;
+    
+    // Получаем выбранные ингредиенты
+    const ingredients = [];
+    selectedIngredients.querySelectorAll('.ingredient-tag').forEach(tag => {
+        const id = parseInt(tag.getAttribute('data-id'));
+        const name = tag.getAttribute('data-name');
+        const icon = tag.getAttribute('data-icon');
+        ingredients.push({ id, name, icon });
+    });
+    
+    if (ingredients.length === 0) {
+        alert('Добавьте хотя бы один ингредиент');
+        return;
+    }
+    
+    const submitButton = this.querySelector('button[type="submit"]');
+    const isEditing = submitButton.dataset.editingId;
+    
+    if (isEditing) {
+        // Редактируем существующее блюдо
+        const dishId = parseInt(isEditing);
+        const dishIndex = dishes.findIndex(d => d.id === dishId);
+        
+        if (dishIndex !== -1) {
+            dishes[dishIndex] = {
+                ...dishes[dishIndex],
                 name: dishName,
                 description: dishDescription,
                 ingredients: ingredients
             };
             
-            // Добавляем в массив и сохраняем в Firebase
-            dishes.push(newDish);
             saveDishesToFirebase();
-            
-            // Очищаем форму
-            addDishForm.reset();
-            selectedIngredients.innerHTML = '';
-            
-            // Перезагружаем список блюд
             loadDishes();
             
-            // Показываем секцию с блюдами
-            navButtons.forEach(btn => btn.classList.remove('active'));
-            document.querySelector('[data-target="dishes-section"]').classList.add('active');
-            sections.forEach(section => section.classList.remove('active'));
-            document.getElementById('dishes-section').classList.add('active');
+            // Сбрасываем форму
+            resetDishForm();
             
-            alert('Блюдо успешно добавлено!');
-        });
+            alert('Блюдо успешно обновлено!');
+        }
+    } else {
+        // Создаем новое блюдо
+        const newDish = {
+            id: Date.now(),
+            name: dishName,
+            description: dishDescription,
+            ingredients: ingredients
+        };
+        
+        // Добавляем в массив и сохраняем в Firebase
+        dishes.push(newDish);
+        saveDishesToFirebase();
+        
+        // Сбрасываем форму
+        resetDishForm();
+        
+        // Перезагружаем список блюд
+        loadDishes();
+        
+        alert('Блюдо успешно добавлено!');
+    }
+});
+
+function resetDishForm() {
+    addDishForm.reset();
+    selectedIngredients.innerHTML = '';
+    
+    // Сбрасываем кнопку отправки
+    const submitButton = addDishForm.querySelector('button[type="submit"]');
+    submitButton.innerHTML = '<i class="fas fa-save"></i> Сохранить блюдо';
+    delete submitButton.dataset.editingId;
+    
+    // Скрываем кнопку отмены
+    document.getElementById('cancel-edit').style.display = 'none';
+}
         
         // Генерация списка покупок
         generateShoppingListBtn.addEventListener('click', generateShoppingList);
@@ -1661,66 +1700,79 @@ ingredientSearch.addEventListener('input', function() {
         saveShoppingListToFirebase();
     }
     
-    function loadDishes() {
-        dishesContainer.innerHTML = '';
-        
-        if (dishes.length === 0) {
-            dishesContainer.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-utensils"></i>
-                    <h3>Пока нет добавленных блюд</h3>
-                    <p>Добавьте свое первое блюдо!</p>
-                </div>
-            `;
-            return;
-        }
-        
-        dishes.forEach(dish => {
-            const dishCard = document.createElement('div');
-            dishCard.className = 'dish-card';
-            
-            const ingredientsText = dish.ingredients.map(ing => ing.name).join(', ');
-            
-            dishCard.innerHTML = `
-                <div class="dish-image">
-                    <i class="fas fa-utensils"></i>
-                </div>
-                <div class="dish-content">
-                    <div class="dish-title">${dish.name}</div>
-                    <div class="dish-ingredients">${ingredientsText}</div>
-                    <div class="dish-actions">
-                        <button class="btn btn-secondary select-dish" data-id="${dish.id}">
-                            <i class="fas fa-calendar-plus"></i> Выбрать
-                        </button>
-                        <button class="btn btn-danger delete-dish" data-id="${dish.id}">
-                            <i class="fas fa-trash"></i> Удалить
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            dishesContainer.appendChild(dishCard);
-        });
-        
-        // Добавляем обработчики для кнопок
-        document.querySelectorAll('.select-dish').forEach(button => {
-            button.addEventListener('click', function() {
-                const dishId = parseInt(this.getAttribute('data-id'));
-                selectDishForWeek(dishId);
-            });
-        });
-        
-        document.querySelectorAll('.delete-dish').forEach(button => {
-            button.addEventListener('click', function() {
-                const dishId = parseInt(this.getAttribute('data-id'));
-                deleteDish(dishId);
-            });
-        });
-        
-        // Обновляем опции в селектах недельного плана
-        updateWeekPlanSelects();
+function loadDishes() {
+    dishesContainer.innerHTML = '';
+    
+    if (dishes.length === 0) {
+        dishesContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-utensils"></i>
+                <h3>Пока нет добавленных блюд</h3>
+                <p>Добавьте свое первое блюдо!</p>
+            </div>
+        `;
+        return;
     }
     
+    dishes.forEach(dish => {
+        const dishCard = document.createElement('div');
+        dishCard.className = 'dish-card';
+        
+        const ingredientsText = dish.ingredients.map(ing => ing.name).join(', ');
+        
+        dishCard.innerHTML = `
+            <div class="dish-image">
+                <i class="fas fa-utensils"></i>
+            </div>
+            <div class="dish-content">
+                <div class="dish-title">${dish.name}</div>
+                <div class="dish-ingredients">${ingredientsText}</div>
+                <div class="dish-actions">
+                    <button class="btn btn-secondary select-dish" data-id="${dish.id}">
+                        <i class="fas fa-calendar-plus"></i> Выбрать
+                    </button>
+                    <button class="btn edit-dish" data-id="${dish.id}" style="background: #4CAF50; color: white; width: fit-content;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger delete-dish" data-id="${dish.id}">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        dishesContainer.appendChild(dishCard);
+    });
+    
+    // Добавляем обработчики для кнопок выбора блюд
+    document.querySelectorAll('.select-dish').forEach(button => {
+        button.addEventListener('click', function() {
+            const dishId = parseInt(this.getAttribute('data-id'));
+            selectDishForWeek(dishId);
+        });
+    });
+    
+    // Добавляем обработчики для кнопок удаления
+    document.querySelectorAll('.delete-dish').forEach(button => {
+        button.addEventListener('click', function() {
+            const dishId = parseInt(this.getAttribute('data-id'));
+            deleteDish(dishId);
+        });
+    });
+    
+    // ДОБАВЛЯЕМ ОБРАБОТЧИКИ ДЛЯ КНОПОК РЕДАКТИРОВАНИЯ
+    document.querySelectorAll('.edit-dish').forEach(button => {
+        button.addEventListener('click', function() {
+            const dishId = parseInt(this.getAttribute('data-id'));
+            editDish(dishId);
+        });
+    });
+    
+    // Обновляем опции в селектах недельного плана
+    updateWeekPlanSelects();
+}
+        
+
     function loadWeekPlan() {
         const weekPlanContainer = document.getElementById('week-plan');
         weekPlanContainer.innerHTML = '';
@@ -2298,6 +2350,63 @@ function removeFromShoppingList(itemId) {
             }
         }
     }
+
+// Добавляем обработчики для кнопок редактирования
+document.querySelectorAll('.edit-dish').forEach(button => {
+    button.addEventListener('click', function() {
+        const dishId = parseInt(this.getAttribute('data-id'));
+        editDish(dishId);
+    });
+});
+
+function editDish(dishId) {
+    const dish = dishes.find(d => d.id === dishId);
+    if (!dish) return;
+
+    // Заполняем форму данными блюда
+    document.getElementById('dish-name').value = dish.name;
+    document.getElementById('dish-description').value = dish.description || '';
+    
+    // Очищаем и заполняем список ингредиентов
+    selectedIngredients.innerHTML = '';
+    dish.ingredients.forEach(ingredient => {
+        const ingredientTag = document.createElement('div');
+        ingredientTag.className = 'ingredient-tag';
+        ingredientTag.setAttribute('data-id', ingredient.id);
+        ingredientTag.setAttribute('data-name', ingredient.name);
+        ingredientTag.setAttribute('data-icon', ingredient.icon);
+        ingredientTag.innerHTML = `
+            <span class="ingredient-icon">${ingredient.icon}</span>
+            ${ingredient.name}
+            <span class="remove">&times;</span>
+        `;
+        
+        ingredientTag.querySelector('.remove').addEventListener('click', function() {
+            ingredientTag.remove();
+        });
+        
+        selectedIngredients.appendChild(ingredientTag);
+    });
+
+    // Изменяем поведение формы для редактирования
+    const submitButton = addDishForm.querySelector('button[type="submit"]');
+    submitButton.innerHTML = '<i class="fas fa-save"></i> Сохранить изменения';
+    submitButton.dataset.editingId = dishId;
+
+    // Показываем кнопку отмены
+    document.getElementById('cancel-edit').style.display = 'block';
+
+    // Показываем секцию добавления блюда
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    document.querySelector('[data-target="add-dish-section"]').classList.add('active');
+    sections.forEach(section => section.classList.remove('active'));
+    document.getElementById('add-dish-section').classList.add('active');
+    
+    // Прокручиваем к верху страницы
+    window.scrollTo(0, 0);
+}
+
+
 </script>
 </body>
 </html>
