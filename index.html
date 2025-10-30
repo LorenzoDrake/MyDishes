@@ -76,35 +76,73 @@
 
 nav {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     overflow-x: auto;
     padding-bottom: 5px;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Для Firefox */
-    -ms-overflow-style: none; /* Для IE и Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    width: 100%;
+    max-width: 100vw; /* Ограничиваем максимальную ширину */
+    margin: 0 -15px; /* Компенсируем padding контейнера */
+    padding-left: 15px;
+    padding-right: 15px;
 }
 
-/* Скрываем скроллбар для WebKit браузеров (Chrome, Safari, новые версии Edge) */
 nav::-webkit-scrollbar {
     display: none;
-    width: 0;
-    height: 0;
-    background: transparent;
 }
 
 .nav-btn {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     border: none;
-    padding: 8px 15px;
+    padding: 8px 12px; /* Уменьшили padding */
     border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s ease;
     white-space: nowrap;
-    font-size: 0.85rem;
+    font-size: 0.8rem; /* Уменьшили размер шрифта */
     flex-shrink: 0;
-    -webkit-tap-highlight-color: transparent; /* Убираем подсветку при тапе на iOS */
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Уменьшаем отступы на мобильных */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 10px;
+        padding: 0 10px;
+    }
+    
+    nav {
+        gap: 6px;
+        margin: 0 -10px;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    .nav-btn {
+        padding: 7px 10px;
+        font-size: 0.75rem;
+    }
+    
+    .nav-btn i {
+        font-size: 0.7rem; /* Уменьшаем иконки */
+    }
+}
+
+/* Для очень маленьких экранов */
+@media (max-width: 360px) {
+    .nav-btn {
+        padding: 6px 8px;
+        font-size: 0.7rem;
+    }
+    
+    .nav-btn i {
+        margin-right: 2px;
+    }
 }
 
         .nav-btn:hover, .nav-btn.active {
@@ -154,10 +192,10 @@ nav::-webkit-scrollbar {
 
         input, select, textarea {
             width: 100%;
-            padding: 14px;
+            padding: 8px;
             border: 1px solid #FFD1DC;
             border-radius: 10px;
-            font-size: 1rem;
+            font-size: 0.8rem;
             transition: border 0.3s;
             -webkit-appearance: none;
             appearance: none;
@@ -193,7 +231,6 @@ nav::-webkit-scrollbar {
             justify-content: center;
             gap: 8px;
             width: 100%;
-            margin-top: 10px;
             touch-action: manipulation;
         }
 
@@ -397,7 +434,7 @@ nav::-webkit-scrollbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 0;
+            padding: 4px 0;
             border-bottom: 1px solid #FFE4E9;
         }
 
@@ -604,7 +641,7 @@ nav::-webkit-scrollbar {
             
             nav {
                 width: 100%;
-                justify-content: flex-start;
+                justify-content: center;
             }
             
             .container {
@@ -620,11 +657,11 @@ nav::-webkit-scrollbar {
             }
             
             input, select, textarea {
-                padding: 12px;
+                padding: 6px;
             }
             
             .btn {
-                padding: 12px 16px;
+                padding: 8px 8px;
             }
         }
 
@@ -681,6 +718,34 @@ nav::-webkit-scrollbar {
             max-width: 300px;
             margin: 0 auto;
         }
+		
+		.checkbox-wrapper {
+    position: relative;
+    width: 22px;
+    height: 22px;
+}
+
+.custom-checkbox {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--gray);
+    border-radius: 50%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.custom-checkbox.checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.custom-checkbox i {
+    color: white;
+    font-size: 12px;
+}
     </style>
 </head>
 <body>
@@ -761,11 +826,25 @@ nav::-webkit-scrollbar {
         </section>
 
         <!-- Секция списка покупок -->
-        <section id="shopping-list-section" class="section">
-            <h2>Мой список покупок</h2>
-            <div class="shopping-list" id="shopping-list">
-                <!-- Элементы списка покупок будут добавляться здесь -->
-            </div>
+<section id="shopping-list-section" class="section">
+    <h2>Мой список покупок</h2>
+    
+    <!-- Форма для добавления продуктов -->
+    <div class="form-group">
+        <div class="search-container">
+            <input type="text" id="shopping-search" placeholder="Добавить продукт в список покупок...">
+            <div class="search-results" id="shopping-search-results"></div>
+        </div>
+    </div>
+    
+    <div class="shopping-list" id="shopping-list">
+        <!-- Элементы списка покупок будут добавляться здесь -->
+    </div>
+    
+    <!-- Кнопка очистки списка покупок -->
+    <button class="btn btn-danger" id="clear-shopping-list" style="margin-top: 15px;">
+        <i class="fas fa-trash"></i> Очистить список покупок
+    </button>
         </section>
         
         <div class="form-group" style="margin-top: 30px; text-align: center;">
@@ -795,38 +874,450 @@ nav::-webkit-scrollbar {
     const USER_ID = "single_user";
 
     // База данных ингредиентов с иконками
-    const ingredientsDB = [
-        { id: 1, name: "Картофель", icon: "🥔" },
-        { id: 2, name: "Морковь", icon: "🥕" },
-        { id: 3, name: "Лук", icon: "🧅" },
-        { id: 4, name: "Чеснок", icon: "🧄" },
-        { id: 5, name: "Помидор", icon: "🍅" },
-        { id: 6, name: "Огурец", icon: "🥒" },
-        { id: 7, name: "Перец", icon: "🫑" },
-        { id: 8, name: "Капуста", icon: "🥬" },
-        { id: 9, name: "Брокколи", icon: "🥦" },
-        { id: 10, name: "Курица", icon: "🍗" },
-        { id: 11, name: "Говядина", icon: "🥩" },
-        { id: 12, name: "Свинина", icon: "🐖" },
-        { id: 13, name: "Рыба", icon: "🐟" },
-        { id: 14, name: "Яйца", icon: "🥚" },
-        { id: 15, name: "Молоко", icon: "🥛" },
-        { id: 16, name: "Сыр", icon: "🧀" },
-        { id: 17, name: "Масло", icon: "🧈" },
-        { id: 18, name: "Сметана", icon: "🥣" },
-        { id: 19, name: "Рис", icon: "🍚" },
-        { id: 20, name: "Макароны", icon: "🍝" },
-        { id: 21, name: "Хлеб", icon: "🍞" },
-        { id: 22, name: "Мука", icon: "🌾" },
-        { id: 23, name: "Сахар", icon: "🍚" },
-        { id: 24, name: "Соль", icon: "🧂" },
-        { id: 25, name: "Перец", icon: "🌶️" },
-        { id: 26, name: "Масло растительное", icon: "🫒" },
-        { id: 27, name: "Зелень", icon: "🌿" },
-        { id: 28, name: "Грибы", icon: "🍄" },
-        { id: 29, name: "Фасоль", icon: "🫘" },
-        { id: 30, name: "Горох", icon: "🫛" }
-    ];
+const ingredientsDB = [
+    { id: 1, name: "Картофель", icon: "🥔" },
+    { id: 2, name: "Морковь", icon: "🥕" },
+    { id: 3, name: "Лук", icon: "🧅" },
+    { id: 4, name: "Чеснок", icon: "🧄" },
+    { id: 5, name: "Помидор", icon: "🍅" },
+    { id: 6, name: "Огурец", icon: "🥒" },
+    { id: 7, name: "Перец", icon: "🫑" },
+    { id: 8, name: "Капуста", icon: "🥬" },
+    { id: 9, name: "Брокколи", icon: "🥦" },
+    { id: 10, name: "Курица", icon: "🍗" },
+    { id: 11, name: "Говядина", icon: "🥩" },
+    { id: 12, name: "Свинина", icon: "🐖" },
+    { id: 13, name: "Рыба", icon: "🐟" },
+    { id: 14, name: "Яйца", icon: "🥚" },
+    { id: 15, name: "Молоко", icon: "🥛" },
+    { id: 16, name: "Сыр", icon: "🧀" },
+    { id: 17, name: "Масло", icon: "🧈" },
+    { id: 18, name: "Сметана", icon: "🥣" },
+    { id: 19, name: "Рис", icon: "🍚" },
+    { id: 20, name: "Макароны", icon: "🍝" },
+    { id: 21, name: "Хлеб", icon: "🍞" },
+    { id: 22, name: "Мука", icon: "🌾" },
+    { id: 23, name: "Сахар", icon: "🍚" },
+    { id: 24, name: "Соль", icon: "🧂" },
+    { id: 25, name: "Перец", icon: "🌶️" },
+    { id: 26, name: "Масло растительное", icon: "🫒" },
+    { id: 27, name: "Зелень", icon: "🌿" },
+    { id: 28, name: "Грибы", icon: "🍄" },
+    { id: 29, name: "Фасоль", icon: "🫘" },
+    { id: 30, name: "Горох", icon: "🫛" },
+    
+    // Добавленные по запросу
+    { id: 31, name: "Кофе", icon: "☕" },
+    { id: 32, name: "Плавленый сыр", icon: "🧀" },
+    { id: 33, name: "Кабачок", icon: "🥒" },
+    { id: 34, name: "Сгущенка", icon: "🥫" },
+    { id: 35, name: "Бумага для жарки", icon: "📜" },
+    { id: 36, name: "Пакеты для запекания", icon: "🛍️" },
+    { id: 37, name: "Бананы", icon: "🍌" },
+    { id: 38, name: "Киви", icon: "🥝" },
+    { id: 39, name: "Яблоко", icon: "🍎" },
+    { id: 40, name: "Груша", icon: "🍐" },
+    
+    // Дополнительные овощи
+    { id: 41, name: "Баклажан", icon: "🍆" },
+    { id: 42, name: "Тыква", icon: "🎃" },
+    { id: 43, name: "Свекла", icon: "🍠" },
+    { id: 44, name: "Репа", icon: "🥬" },
+    { id: 45, name: "Редис", icon: "🌶️" },
+    { id: 46, name: "Шпинат", icon: "🍃" },
+    { id: 47, name: "Сельдерей", icon: "🥬" },
+    { id: 48, name: "Спаржа", icon: "🎍" },
+    { id: 49, name: "Кукуруза", icon: "🌽" },
+    { id: 50, name: "Авокадо", icon: "🥑" },
+    
+    // Дополнительные фрукты и ягоды
+    { id: 51, name: "Апельсин", icon: "🍊" },
+    { id: 52, name: "Лимон", icon: "🍋" },
+    { id: 53, name: "Виноград", icon: "🍇" },
+    { id: 54, name: "Клубника", icon: "🍓" },
+    { id: 55, name: "Малина", icon: "🫐" },
+    { id: 56, name: "Черника", icon: "🫐" },
+    { id: 57, name: "Ананас", icon: "🍍" },
+    { id: 58, name: "Арбуз", icon: "🍉" },
+    { id: 59, name: "Дыня", icon: "🍈" },
+    { id: 60, name: "Персик", icon: "🍑" },
+    { id: 61, name: "Слива", icon: "🍑" },
+    { id: 62, name: "Вишня", icon: "🍒" },
+    { id: 63, name: "Черешня", icon: "🍒" },
+    { id: 64, name: "Гранат", icon: "🍎" },
+    { id: 65, name: "Манго", icon: "🥭" },
+    
+    // Дополнительные продукты
+    { id: 66, name: "Йогурт", icon: "🥛" },
+    { id: 67, name: "Кефир", icon: "🥛" },
+    { id: 68, name: "Творог", icon: "🧀" },
+    { id: 69, name: "Сливки", icon: "🥛" },
+    { id: 70, name: "Майонез", icon: "🥣" },
+    { id: 71, name: "Кетчуп", icon: "🍅" },
+    { id: 72, name: "Горчица", icon: "🟡" },
+    { id: 73, name: "Мед", icon: "🍯" },
+    { id: 74, name: "Орехи", icon: "🥜" },
+    { id: 75, name: "Изюм", icon: "🍇" },
+    { id: 76, name: "Чай", icon: "🍵" },
+    { id: 77, name: "Какао", icon: "🟫" },
+    { id: 78, name: "Шоколад", icon: "🍫" },
+    { id: 79, name: "Печенье", icon: "🍪" },
+    { id: 80, name: "Мороженое", icon: "🍦" },
+	{ id: 81, name: "Имбирь", icon: "🫚" },
+{ id: 82, name: "Куркума", icon: "🟡" },
+{ id: 83, name: "Корица", icon: "🟤" },
+{ id: 84, name: "Ваниль", icon: "🌱" },
+{ id: 85, name: "Мята", icon: "🌿" },
+{ id: 86, name: "Базилик", icon: "🌿" },
+{ id: 87, name: "Петрушка", icon: "🌿" },
+{ id: 88, name: "Укроп", icon: "🌿" },
+{ id: 89, name: "Кинза", icon: "🌿" },
+{ id: 90, name: "Розмарин", icon: "🌿" },
+{ id: 91, name: "Орегано", icon: "🌿" },
+{ id: 92, name: "Тимьян", icon: "🌿" },
+{ id: 93, name: "Лавровый лист", icon: "🍃" },
+{ id: 94, name: "Перец чили", icon: "🌶️" },
+{ id: 95, name: "Халапеньо", icon: "🌶️" },
+{ id: 96, name: "Каперсы", icon: "🌿" },
+{ id: 97, name: "Оливки", icon: "🫒" },
+{ id: 98, name: "Маслины", icon: "🫒" },
+{ id: 99, name: "Артишок", icon: "🌱" },
+{ id: 100, name: "Спаржа", icon: "🎍" },
+
+// Мясные продукты и птица
+{ id: 101, name: "Бекон", icon: "🥓" },
+{ id: 102, name: "Ветчина", icon: "🍖" },
+{ id: 103, name: "Колбаса", icon: "🌭" },
+{ id: 104, name: "Сардельки", icon: "🌭" },
+{ id: 105, name: "Сосиски", icon: "🌭" },
+{ id: 106, name: "Салями", icon: "🍖" },
+{ id: 107, name: "Пепперони", icon: "🍖" },
+{ id: 108, name: "Индейка", icon: "🦃" },
+{ id: 109, name: "Утка", icon: "🦆" },
+{ id: 110, name: "Гусь", icon: "🦆" },
+
+// Морепродукты
+{ id: 111, name: "Креветки", icon: "🦐" },
+{ id: 112, name: "Кальмары", icon: "🦑" },
+{ id: 113, name: "Мидии", icon: "🐚" },
+{ id: 114, name: "Устрицы", icon: "🦪" },
+{ id: 115, name: "Гребешки", icon: "🐚" },
+{ id: 116, name: "Осьминог", icon: "🐙" },
+{ id: 117, name: "Икра", icon: "🐟" },
+{ id: 118, name: "Лосось", icon: "🐟" },
+{ id: 119, name: "Тунец", icon: "🐟" },
+{ id: 120, name: "Треска", icon: "🐟" },
+
+// Молочные продукты и альтернативы
+{ id: 121, name: "Соевое молоко", icon: "🥛" },
+{ id: 122, name: "Миндальное молоко", icon: "🥛" },
+{ id: 123, name: "Овсяное молоко", icon: "🥛" },
+{ id: 124, name: "Кокосовое молоко", icon: "🥥" },
+{ id: 125, name: "Тофу", icon: "🫓" },
+{ id: 126, name: "Сейтан", icon: "🌾" },
+{ id: 127, name: "Темпе", icon: "🫘" },
+{ id: 128, name: "Веганский сыр", icon: "🧀" },
+{ id: 129, name: "Пармезан", icon: "🧀" },
+{ id: 130, name: "Моцарелла", icon: "🧀" },
+
+// Крупы и злаки
+{ id: 131, name: "Гречка", icon: "🍚" },
+{ id: 132, name: "Овсянка", icon: "🥣" },
+{ id: 133, name: "Киноа", icon: "🌾" },
+{ id: 134, name: "Булгур", icon: "🌾" },
+{ id: 135, name: "Пшено", icon: "🌾" },
+{ id: 136, name: "Перловка", icon: "🍚" },
+{ id: 137, name: "Кукурузная крупа", icon: "🌽" },
+{ id: 138, name: "Манка", icon: "🌾" },
+{ id: 139, name: "Отруби", icon: "🌾" },
+{ id: 140, name: "Семена чиа", icon: "🌱" },
+
+// Орехи и семечки
+{ id: 141, name: "Миндаль", icon: "🌰" },
+{ id: 142, name: "Грецкие орехи", icon: "🌰" },
+{ id: 143, name: "Фундук", icon: "🌰" },
+{ id: 144, name: "Кешью", icon: "🌰" },
+{ id: 145, name: "Фисташки", icon: "🌰" },
+{ id: 146, name: "Кедровые орехи", icon: "🌰" },
+{ id: 147, name: "Семена подсолнечника", icon: "🌻" },
+{ id: 148, name: "Тыквенные семечки", icon: "🎃" },
+{ id: 149, name: "Кунжут", icon: "⚫" },
+{ id: 150, name: "Льняное семя", icon: "🌱" },
+
+// Соусы и заправки
+{ id: 151, name: "Соевый соус", icon: "🫙" },
+{ id: 152, name: "Устричный соус", icon: "🫙" },
+{ id: 153, name: "Рыбный соус", icon: "🐟" },
+{ id: 154, name: "Вустерширский соус", icon: "🫙" },
+{ id: 155, name: "Табаско", icon: "🌶️" },
+{ id: 156, name: "Сырный соус", icon: "🧀" },
+{ id: 157, name: "Бальзамический уксус", icon: "🫙" },
+{ id: 158, name: "Яблочный уксус", icon: "🍎" },
+{ id: 159, name: "Винный уксус", icon: "🍷" },
+{ id: 160, name: "Рисовый уксус", icon: "🍚" },
+
+// Выпечка и сладости
+{ id: 161, name: "Дрожжи", icon: "🍞" },
+{ id: 162, name: "Разрыхлитель", icon: "🥧" },
+{ id: 163, name: "Сода", icon: "⚗️" },
+{ id: 164, name: "Желатин", icon: "🍮" },
+{ id: 165, name: "Агар-агар", icon: "🌿" },
+{ id: 166, name: "Пудра сахарная", icon: "🍚" },
+{ id: 167, name: "Карамель", icon: "🍯" },
+{ id: 168, name: "Сироп кленовый", icon: "🍁" },
+{ id: 169, name: "Сироп топпинг", icon: "🫙" },
+{ id: 170, name: "Маршмеллоу", icon: "🍡" },
+
+// Напитки и алкоголь
+{ id: 171, name: "Вино красное", icon: "🍷" },
+{ id: 172, name: "Вино белое", icon: "🍸" },
+{ id: 173, name: "Пиво", icon: "🍺" },
+{ id: 174, name: "Водка", icon: "🥃" },
+{ id: 175, name: "Виски", icon: "🥃" },
+{ id: 176, name: "Ром", icon: "🍹" },
+{ id: 177, name: "Текила", icon: "🍸" },
+{ id: 178, name: "Ликер", icon: "🥂" },
+{ id: 179, name: "Вермут", icon: "🍸" },
+{ id: 180, name: "Сок апельсиновый", icon: "🧃" },
+{ id: 181, name: "Сок яблочный", icon: "🧃" },
+{ id: 182, name: "Сок томатный", icon: "🍅" },
+{ id: 183, name: "Сок мультифрукт", icon: "🧃" },
+{ id: 184, name: "Лимонад", icon: "🥤" },
+{ id: 185, name: "Кола", icon: "🥤" },
+{ id: 186, name: "Газировка", icon: "🫧" },
+{ id: 187, name: "Минеральная вода", icon: "💧" },
+{ id: 188, name: "Энергетик", icon: "⚡" },
+{ id: 189, name: "Смузи", icon: "🥤" },
+{ id: 190, name: "Квас", icon: "🫖" },
+
+// Консервы и пресервы
+{ id: 191, name: "Тунец консервированный", icon: "🐟" },
+{ id: 192, name: "Шпроты", icon: "🐟" },
+{ id: 193, name: "Сардины", icon: "🐟" },
+{ id: 194, name: "Кукуруза консервированная", icon: "🌽" },
+{ id: 195, name: "Горошек консервированный", icon: "🫛" },
+{ id: 196, name: "Фасоль консервированная", icon: "🫘" },
+{ id: 197, name: "Ананасы консервированные", icon: "🍍" },
+{ id: 198, name: "Персики консервированные", icon: "🍑" },
+{ id: 199, name: "Оливки консервированные", icon: "🫒" },
+{ id: 200, name: "Маринованные огурцы", icon: "🥒" },
+
+// Полуфабрикаты
+{ id: 201, name: "Пельмени", icon: "🥟" },
+{ id: 202, name: "Вареники", icon: "🥟" },
+{ id: 203, name: "Хинкали", icon: "🥟" },
+{ id: 204, name: "Манты", icon: "🥟" },
+{ id: 205, name: "Котлеты замороженные", icon: "🍔" },
+{ id: 206, name: "Блины замороженные", icon: "🥞" },
+{ id: 207, name: "Пицца замороженная", icon: "🍕" },
+{ id: 208, name: "Наггетсы куриные", icon: "🍗" },
+{ id: 209, name: "Фрикадельки", icon: "🍡" },
+{ id: 210, name: "Лазанья замороженная", icon: "🍝" },
+
+// Хлебобулочные изделия
+{ id: 211, name: "Багет", icon: "🥖" },
+{ id: 212, name: "Лаваш", icon: "🫓" },
+{ id: 213, name: "Пита", icon: "🫓" },
+{ id: 214, name: "Тортилья", icon: "🫓" },
+{ id: 215, name: "Круассан", icon: "🥐" },
+{ id: 216, name: "Булочка сдобная", icon: "🍞" },
+{ id: 217, name: "Пончики", icon: "🍩" },
+{ id: 218, name: "Пирожки", icon: "🥮" },
+{ id: 219, name: "Слойка", icon: "🥐" },
+{ id: 220, name: "Сухари", icon: "🍞" },
+
+// Сладости и десерты
+{ id: 221, name: "Торт", icon: "🎂" },
+{ id: 222, name: "Пирожное", icon: "🍰" },
+{ id: 223, name: "Эклер", icon: "🍩" },
+{ id: 224, name: "Наполеон", icon: "🍰" },
+{ id: 225, name: "Медовик", icon: "🍯" },
+{ id: 226, name: "Чизкейк", icon: "🍰" },
+{ id: 227, name: "Тирамису", icon: "🍫" },
+{ id: 228, name: "Панна котта", icon: "🍮" },
+{ id: 229, name: "Мусс", icon: "🍦" },
+{ id: 230, name: "Суфле", icon: "🍮" },
+
+// Шоколад и конфеты
+{ id: 231, name: "Шоколад молочный", icon: "🍫" },
+{ id: 232, name: "Шоколад горький", icon: "🍫" },
+{ id: 233, name: "Шоколад белый", icon: "🍫" },
+{ id: 234, name: "Пралине", icon: "🍬" },
+{ id: 235, name: "Трюфели", icon: "🍫" },
+{ id: 236, name: "Карамель", icon: "🍬" },
+{ id: 237, name: "Ирис", icon: "🍬" },
+{ id: 238, name: "Мармелад", icon: "🍬" },
+{ id: 239, name: "Зефир", icon: "🍡" },
+{ id: 240, name: "Пастила", icon: "🍬" },
+
+// Мороженое
+{ id: 241, name: "Пломбир", icon: "🍦" },
+{ id: 242, name: "Щербет", icon: "🍧" },
+{ id: 243, name: "Сорбет", icon: "🍧" },
+{ id: 244, name: "Эскимо", icon: "🍦" },
+{ id: 245, name: "Стаканчик", icon: "🍦" },
+{ id: 246, name: "Рожок", icon: "🍦" },
+{ id: 247, name: "Мороженое фруктовое", icon: "🍧" },
+{ id: 248, name: "Мороженое шоколадное", icon: "🍫" },
+{ id: 249, name: "Мороженое ванильное", icon: "🍦" },
+{ id: 250, name: "Мороженое крем-брюле", icon: "🍮" },
+
+// Снеки
+{ id: 251, name: "Чипсы", icon: "🥔" },
+{ id: 252, name: "Сухарики", icon: "🍞" },
+{ id: 253, name: "Попкорн", icon: "🍿" },
+{ id: 254, name: "Орешки соленые", icon: "🥜" },
+{ id: 255, name: "Крекеры", icon: "🍘" },
+{ id: 256, name: "Гренки", icon: "🍞" },
+{ id: 257, name: "Снеки кукурузные", icon: "🌽" },
+{ id: 258, name: "Рыбные палочки", icon: "🐟" },
+{ id: 259, name: "Кукурузные палочки", icon: "🌽" },
+{ id: 260, name: "Соломка", icon: "🍪" },
+
+// Соусы и пасты
+{ id: 261, name: "Паста томатная", icon: "🍅" },
+{ id: 262, name: "Паста ореховая", icon: "🥜" },
+{ id: 263, name: "Паста кунжутная", icon: "⚫" },
+{ id: 264, name: "Соус терияки", icon: "🫙" },
+{ id: 265, name: "Соус сацебели", icon: "🫙" },
+{ id: 266, name: "Соус тартар", icon: "🫙" },
+{ id: 267, name: "Соус цезарь", icon: "🫙" },
+{ id: 268, name: "Соус барбекю", icon: "🍖" },
+{ id: 269, name: "Соус чили", icon: "🌶️" },
+{ id: 270, name: "Соус сладкий чили", icon: "🌶️" },
+
+// Масла и жиры
+{ id: 271, name: "Масло оливковое", icon: "🫒" },
+{ id: 272, name: "Масло кокосовое", icon: "🥥" },
+{ id: 273, name: "Масло подсолнечное", icon: "🌻" },
+{ id: 274, name: "Масло кукурузное", icon: "🌽" },
+{ id: 275, name: "Масло льняное", icon: "🌱" },
+{ id: 276, name: "Масло кунжутное", icon: "⚫" },
+{ id: 277, name: "Масло авокадо", icon: "🥑" },
+{ id: 278, name: "Масло грецкого ореха", icon: "🌰" },
+{ id: 279, name: "Масло виноградной косточки", icon: "🍇" },
+{ id: 280, name: "Смалец", icon: "🐖" },
+
+// Специи и приправы
+{ id: 281, name: "Карри", icon: "🟡" },
+{ id: 282, name: "Паприка", icon: "🔴" },
+{ id: 283, name: "Кумин", icon: "🟤" },
+{ id: 284, name: "Кориандр", icon: "🌿" },
+{ id: 285, name: "Гвоздика", icon: "🌼" },
+{ id: 286, name: "Мускатный орех", icon: "🌰" },
+{ id: 287, name: "Кардамон", icon: "🟢" },
+{ id: 288, name: "Бадьян", icon: "⭐" },
+{ id: 289, name: "Шафран", icon: "🟡" },
+{ id: 290, name: "Хмели-сунели", icon: "🌿" },
+
+// Овощи и зелень
+{ id: 291, name: "Руккола", icon: "🌿" },
+{ id: 292, name: "Кресс-салат", icon: "🌿" },
+{ id: 293, name: "Лук-порей", icon: "🧅" },
+{ id: 294, name: "Лук-шалот", icon: "🧅" },
+{ id: 295, name: "Черемша", icon: "🌱" },
+{ id: 296, name: "Щавель", icon: "🍃" },
+{ id: 297, name: "Ревень", icon: "🍃" },
+{ id: 298, name: "Топинамбур", icon: "🍠" },
+{ id: 299, name: "Батат", icon: "🍠" },
+{ id: 300, name: "Арракача", icon: "🥕" },
+
+// Фрукты и ягоды
+{ id: 301, name: "Нектарин", icon: "🍑" },
+{ id: 302, name: "Абрикос", icon: "🍑" },
+{ id: 303, name: "Инжир", icon: "🍈" },
+{ id: 304, name: "Хурма", icon: "🍊" },
+{ id: 305, name: "Фейхоа", icon: "🟢" },
+{ id: 306, name: "Карамбола", icon: "⭐" },
+{ id: 307, name: "Питайя", icon: "🐉" },
+{ id: 308, name: "Маракуйя", icon: "🟣" },
+{ id: 309, name: "Личи", icon: "🔴" },
+{ id: 310, name: "Рамбутан", icon: "🎾" },
+
+// Грибы
+{ id: 311, name: "Шампиньоны", icon: "🍄" },
+{ id: 312, name: "Вешенки", icon: "🍄" },
+{ id: 313, name: "Лисички", icon: "🍄" },
+{ id: 314, name: "Белые грибы", icon: "🍄" },
+{ id: 315, name: "Подберезовики", icon: "🍄" },
+{ id: 316, name: "Подосиновики", icon: "🍄" },
+{ id: 317, name: "Маслята", icon: "🍄" },
+{ id: 318, name: "Опята", icon: "🍄" },
+{ id: 319, name: "Грузди", icon: "🍄" },
+{ id: 320, name: "Рыжики", icon: "🍄" },
+
+// Бобовые
+{ id: 321, name: "Нут", icon: "🫘" },
+{ id: 322, name: "Чечевица", icon: "🫘" },
+{ id: 323, name: "Маш", icon: "🫘" },
+{ id: 324, name: "Соя", icon: "🫘" },
+{ id: 325, name: "Лобио", icon: "🫘" },
+{ id: 326, name: "Бобы", icon: "🫘" },
+{ id: 327, name: "Арахис", icon: "🥜" },
+{ id: 328, name: "Фисташки", icon: "🌰" },
+{ id: 329, name: "Кешью", icon: "🌰" },
+{ id: 330, name: "Миндаль", icon: "🌰" },
+
+// Молочные продукты
+{ id: 331, name: "Ряженка", icon: "🥛" },
+{ id: 332, name: "Простокваша", icon: "🥛" },
+{ id: 333, name: "Айран", icon: "🥛" },
+{ id: 334, name: "Тан", icon: "🥛" },
+{ id: 335, name: "Катык", icon: "🥛" },
+{ id: 336, name: "Сгущенное молоко", icon: "🥫" },
+{ id: 337, name: "Сухое молоко", icon: "🥛" },
+{ id: 338, name: "Сливки взбитые", icon: "🍦" },
+{ id: 339, name: "Сметана густая", icon: "🥣" },
+{ id: 340, name: "Йогурт греческий", icon: "🥛" },
+
+// Сыры
+{ id: 341, name: "Брынза", icon: "🧀" },
+{ id: 342, name: "Фета", icon: "🧀" },
+{ id: 343, name: "Сулугуни", icon: "🧀" },
+{ id: 344, name: "Чеддер", icon: "🧀" },
+{ id: 345, name: "Гауда", icon: "🧀" },
+{ id: 346, name: "Эдам", icon: "🧀" },
+{ id: 347, name: "Камамбер", icon: "🧀" },
+{ id: 348, name: "Бри", icon: "🧀" },
+{ id: 349, name: "Рокфор", icon: "🧀" },
+{ id: 350, name: "Дор-блю", icon: "🧀" },
+
+// Мясные деликатесы
+{ id: 351, name: "Прошутто", icon: "🍖" },
+{ id: 352, name: "Хамон", icon: "🍖" },
+{ id: 353, name: "Салями", icon: "🍖" },
+{ id: 354, name: "Пармская ветчина", icon: "🍖" },
+{ id: 355, name: "Брезаола", icon: "🍖" },
+{ id: 356, name: "Копченая грудинка", icon: "🥓" },
+{ id: 357, name: "Карпаччо", icon: "🥩" },
+{ id: 358, name: "Тартар", icon: "🥩" },
+{ id: 359, name: "Ростбиф", icon: "🥩" },
+{ id: 360, name: "Антрекот", icon: "🥩" },
+
+// Рыбные деликатесы
+{ id: 361, name: "Семга слабосоленая", icon: "🐟" },
+{ id: 362, name: "Форель слабосоленая", icon: "🐟" },
+{ id: 363, name: "Осетрина", icon: "🐟" },
+{ id: 364, name: "Белуга", icon: "🐟" },
+{ id: 365, name: "Севрюга", icon: "🐟" },
+{ id: 366, name: "Икра красная", icon: "🐟" },
+{ id: 367, name: "Икра черная", icon: "🐟" },
+{ id: 368, name: "Икра летучей рыбы", icon: "🐟" },
+{ id: 369, name: "Рыба холодного копчения", icon: "🐟" },
+{ id: 370, name: "Рыба горячего копчения", icon: "🐟" },
+
+// Бакалея
+{ id: 371, name: "Сода пищевая", icon: "⚗️" },
+{ id: 372, name: "Лимонная кислота", icon: "🍋" },
+{ id: 373, name: "Желатин", icon: "🍮" },
+{ id: 374, name: "Агар-агар", icon: "🌿" },
+{ id: 375, name: "Пектин", icon: "🍎" },
+{ id: 376, name: "Крахмал", icon: "🌾" },
+{ id: 377, name: "Сухари панировочные", icon: "🍞" },
+{ id: 378, name: "Кунжут", icon: "⚫" },
+{ id: 379, name: "Мак", icon: "⚫" },
+{ id: 380, name: "Ванилин", icon: "🌱" }
+];
 
     // Локальное хранилище для блюд (кеш)
     let dishes = [];
@@ -862,7 +1353,9 @@ nav::-webkit-scrollbar {
     const fridgeSearch = document.getElementById('fridge-search');
     const fridgeSearchResults = document.getElementById('fridge-search-results');
     const fridgeItemsContainer = document.getElementById('fridge-items');
-
+const shoppingSearch = document.getElementById('shopping-search');
+const shoppingSearchResults = document.getElementById('shopping-search-results');
+const clearShoppingListBtn = document.getElementById('clear-shopping-list');
     // Инициализация приложения
     document.addEventListener('DOMContentLoaded', function() {
         // Навигация между секциями
@@ -883,35 +1376,58 @@ nav::-webkit-scrollbar {
         // Загрузка данных из Firebase
         loadAllData();
         
-        // Поиск ингредиентов при добавлении блюда
-        ingredientSearch.addEventListener('input', function() {
-            const query = this.value.toLowerCase();
-            if (query.length < 2) {
-                searchResults.style.display = 'none';
-                return;
-            }
-            
-            const filteredIngredients = ingredientsDB.filter(ingredient => 
-                ingredient.name.toLowerCase().includes(query)
-            );
-            
-            displaySearchResults(filteredIngredients, searchResults, addIngredient);
-        });
+// Поиск ингредиентов при добавлении блюда
+ingredientSearch.addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    if (query.length < 1) {
+        searchResults.style.display = 'none';
+        return;
+    }
+    
+    const filteredIngredients = ingredientsDB.filter(ingredient => 
+        ingredient.name.toLowerCase().includes(query)
+    ).sort((a, b) => {
+        // Сначала ингредиенты, которые начинаются с запроса
+        const aStartsWith = a.name.toLowerCase().startsWith(query);
+        const bStartsWith = b.name.toLowerCase().startsWith(query);
         
-        // Поиск ингредиентов для холодильника
-        fridgeSearch.addEventListener('input', function() {
-            const query = this.value.toLowerCase();
-            if (query.length < 2) {
-                fridgeSearchResults.style.display = 'none';
-                return;
-            }
-            
-            const filteredIngredients = ingredientsDB.filter(ingredient => 
-                ingredient.name.toLowerCase().includes(query)
-            );
-            
-            displaySearchResults(filteredIngredients, fridgeSearchResults, addToFridge);
-        });
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        
+        // Если оба начинаются или не начинаются - сортируем по алфавиту
+        return a.name.localeCompare(b.name);
+    });
+    
+    displaySearchResults(filteredIngredients, searchResults, addIngredient);
+});
+
+
+
+
+// Поиск ингредиентов для холодильника
+fridgeSearch.addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    if (query.length < 1) {
+        fridgeSearchResults.style.display = 'none';
+        return;
+    }
+    
+    const filteredIngredients = ingredientsDB.filter(ingredient => 
+        ingredient.name.toLowerCase().includes(query)
+    ).sort((a, b) => {
+        // Сначала ингредиенты, которые начинаются с запроса
+        const aStartsWith = a.name.toLowerCase().startsWith(query);
+        const bStartsWith = b.name.toLowerCase().startsWith(query);
+        
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        
+        // Если оба начинаются или не начинаются - сортируем по алфавиту
+        return a.name.localeCompare(b.name);
+    });
+    
+    displaySearchResults(filteredIngredients, fridgeSearchResults, addToFridge);
+});
         
         // Добавление нового блюда
         addDishForm.addEventListener('submit', function(e) {
@@ -965,6 +1481,31 @@ nav::-webkit-scrollbar {
         // Генерация списка покупок
         generateShoppingListBtn.addEventListener('click', generateShoppingList);
         document.getElementById('clear-all-data').addEventListener('click', clearAllData);
+		
+		shoppingSearch.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        if (query.length < 1) {
+            shoppingSearchResults.style.display = 'none';
+            return;
+        }
+        
+        const filteredIngredients = ingredientsDB.filter(ingredient => 
+            ingredient.name.toLowerCase().includes(query)
+        ).sort((a, b) => {
+            const aStartsWith = a.name.toLowerCase().startsWith(query);
+            const bStartsWith = b.name.toLowerCase().startsWith(query);
+            
+            if (aStartsWith && !bStartsWith) return -1;
+            if (!aStartsWith && bStartsWith) return 1;
+            
+            return a.name.localeCompare(b.name);
+        });
+        
+        displaySearchResults(filteredIngredients, shoppingSearchResults, addToShoppingList);
+    });
+    
+    // Очистка списка покупок
+    clearShoppingListBtn.addEventListener('click', clearShoppingList);
     });
 
     // Функции для работы с Firebase
@@ -1288,54 +1829,73 @@ nav::-webkit-scrollbar {
         });
     }
     
-    function loadShoppingList() {
-        shoppingListContainer.innerHTML = '';
-        
-        if (shoppingList.length === 0) {
-            shoppingListContainer.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-shopping-cart"></i>
-                    <h3>Список покупок пуст</h3>
-                    <p>Сгенерируйте список покупок из плана питания</p>
-                </div>
-            `;
-            return;
-        }
-        
-        shoppingList.forEach(item => {
-            const listItem = document.createElement('div');
-            listItem.className = 'shopping-item';
-            listItem.innerHTML = `
-                <div class="item-info">
-                    <input type="checkbox" class="checkbox" ${item.checked ? 'checked' : ''}>
-                    <span class="ingredient-icon">${item.icon}</span>
-                    <span class="item-name" style="${item.checked ? 'text-decoration: line-through; color: var(--gray);' : ''}">${item.name}</span>
-                </div>
-                <div class="item-actions">
-                    <button class="btn btn-danger remove-item" data-id="${item.id}">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `;
-            
-            shoppingListContainer.appendChild(listItem);
-        });
-        
-        // Добавляем обработчики для чекбоксов и кнопок удаления
-        document.querySelectorAll('.shopping-item .checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const itemName = this.closest('.shopping-item').querySelector('.item-name').textContent;
-                toggleShoppingItem(itemName);
-            });
-        });
-        
-        document.querySelectorAll('.remove-item').forEach(button => {
-            button.addEventListener('click', function() {
-                const itemId = parseInt(this.getAttribute('data-id'));
-                removeFromShoppingList(itemId);
-            });
-        });
+function loadShoppingList() {
+    shoppingListContainer.innerHTML = '';
+    
+    if (shoppingList.length === 0) {
+        shoppingListContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-shopping-cart"></i>
+                <h3>Список покупок пуст</h3>
+                <p>Сгенерируйте список покупок из плана питания</p>
+            </div>
+        `;
+        return;
     }
+    
+    shoppingList.forEach(item => {
+        const listItem = document.createElement('div');
+        listItem.className = 'shopping-item';
+        listItem.innerHTML = `
+            <div class="item-info" style="display: flex; align-items: center; gap: 10px; flex: 1; cursor: pointer;">
+                <div class="checkbox-wrapper" style="position: relative; width: 22px; height: 22px;">
+                    <input type="checkbox" class="checkbox" ${item.checked ? 'checked' : ''} style="position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 2;">
+                    <div class="custom-checkbox" style="width: 22px; height: 22px; border: 2px solid ${item.checked ? 'var(--primary)' : 'var(--gray)'}; border-radius: 50%; background: ${item.checked ? 'var(--primary)' : 'transparent'}; display: flex; align-items: center; justify-content: center; position: relative; z-index: 1;">
+                        ${item.checked ? '<i class="fas fa-check" style="color: white; font-size: 12px;"></i>' : ''}
+                    </div>
+                </div>
+                <span class="ingredient-icon">${item.icon}</span>
+                <span class="item-name" style="${item.checked ? 'text-decoration: line-through; color: var(--gray);' : ''}">${item.name}</span>
+            </div>
+            <div class="item-actions">
+                <button class="btn btn-danger remove-item" data-id="${item.id}" style="padding: 8px; font-size: 0.8rem;">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        shoppingListContainer.appendChild(listItem);
+    });
+    
+    // Добавляем обработчики для чекбоксов и кликов по всей области
+    document.querySelectorAll('.shopping-item .checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const itemElement = this.closest('.shopping-item');
+            const itemName = itemElement.querySelector('.item-name').textContent;
+            toggleShoppingItem(itemName);
+        });
+    });
+    
+    // Добавляем обработчики для клика по всей области элемента
+    document.querySelectorAll('.shopping-item .item-info').forEach(itemInfo => {
+        itemInfo.addEventListener('click', function(e) {
+            // Проверяем, что клик не по кнопке удаления
+            if (!e.target.closest('.remove-item')) {
+                const checkbox = this.querySelector('.checkbox');
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+    
+    document.querySelectorAll('.remove-item').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation(); // Предотвращаем срабатывание клика по родительскому элементу
+            const itemId = parseInt(this.getAttribute('data-id'));
+            removeFromShoppingList(itemId);
+        });
+    });
+}
     
     function displaySearchResults(results, container, clickHandler) {
         container.innerHTML = '';
@@ -1509,6 +2069,93 @@ nav::-webkit-scrollbar {
         saveWeekPlan();
         updateSelectedMeals();
     }
+
+// Функция добавления продукта в список покупок
+function addToShoppingList(ingredient) {
+    // Проверяем, не добавлен ли уже ингредиент
+    const isAlreadyAdded = shoppingList.some(item => 
+        item.id === ingredient.id || 
+        item.name.replace(/\s*\(x\d+\)$/, '') === ingredient.name
+    );
+    
+    if (isAlreadyAdded) {
+        alert('Этот продукт уже есть в списке покупок!');
+        return;
+    }
+    
+    // Добавляем продукт
+    shoppingList.push({
+        id: ingredient.id,
+        name: ingredient.name,
+        icon: ingredient.icon,
+        checked: false,
+        manuallyAdded: true // Помечаем как добавленный вручную
+    });
+    
+    saveShoppingList();
+    loadShoppingList();
+    
+    shoppingSearch.value = '';
+    shoppingSearchResults.style.display = 'none';
+    
+    // Показываем уведомление
+    //showNotification(`"${ingredient.name}" добавлен в список покупок!`);
+}
+
+// Функция очистки списка покупок
+function clearShoppingList() {
+    if (shoppingList.length === 0) {
+        alert('Список покупок уже пуст!');
+        return;
+    }
+    
+    if (confirm('Вы уверены, что хотите очистить весь список покупок?')) {
+        shoppingList = [];
+        saveShoppingList();
+        loadShoppingList();
+        //showNotification('Список покупок очищен!');
+    }
+}
+
+// Функция для показа уведомлений (добавьте эту вспомогательную функцию)
+function showNotification(message) {
+    // Создаем элемент уведомления
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: var(--primary);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        font-weight: 600;
+        transform: translateX(400px);
+        transition: transform 0.3s ease;
+        max-width: 300px;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Анимация появления
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // Автоматическое скрытие через 3 секунды
+    setTimeout(() => {
+        notification.style.transform = 'translateX(400px)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
     
     function generateShoppingList() {
         // Собираем все ингредиенты из плана на неделю
@@ -1562,26 +2209,33 @@ nav::-webkit-scrollbar {
         alert('Список покупок сгенерирован!');
     }
     
-    function toggleShoppingItem(itemName) {
-        // Находим элемент по имени (без количества, если есть)
-        const baseName = itemName.replace(/\s*\(x\d+\)$/, '');
-        
-        shoppingList.forEach(item => {
-            const itemBaseName = item.name.replace(/\s*\(x\d+\)$/, '');
-            if (itemBaseName === baseName) {
-                item.checked = !item.checked;
-            }
-        });
-        
-        saveShoppingList();
-        loadShoppingList();
-    }
+function toggleShoppingItem(itemName) {
+    // Находим элемент по имени (без количества, если есть)
+    const baseName = itemName.replace(/\s*\(x\d+\)$/, '');
     
-    function removeFromShoppingList(itemId) {
-        shoppingList = shoppingList.filter(item => item.id !== itemId);
+    let itemToggled = false;
+    
+    shoppingList.forEach(item => {
+        const itemBaseName = item.name.replace(/\s*\(x\d+\)$/, '');
+        if (itemBaseName === baseName) {
+            item.checked = !item.checked;
+            itemToggled = true;
+        }
+    });
+    
+    if (itemToggled) {
         saveShoppingList();
         loadShoppingList();
+        //showNotification(`"${baseName}" ${shoppingList.find(item => item.name.replace(/\s*\(x\d+\)$/, '') === baseName).checked ? 'отмечен' : 'не отмечен'}`);
     }
+}
+    
+function removeFromShoppingList(itemId) {
+    shoppingList = shoppingList.filter(item => item.id !== itemId);
+    saveShoppingList();
+    loadShoppingList();
+    //showNotification('Продукт удален из списка покупок');
+}
     
     async function clearAllData() {
         if (confirm('Вы уверены, что хотите удалить все данные? Это действие нельзя отменить.')) {
