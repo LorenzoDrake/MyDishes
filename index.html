@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Планировщик питания</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-	<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-	<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -764,681 +764,821 @@
         </div>
     </div>
 
-    <script>
-        // База данных ингредиентов с иконками
-        const ingredientsDB = [
-            { id: 1, name: "Картофель", icon: "🥔" },
-            { id: 2, name: "Морковь", icon: "🥕" },
-            { id: 3, name: "Лук", icon: "🧅" },
-            { id: 4, name: "Чеснок", icon: "🧄" },
-            { id: 5, name: "Помидор", icon: "🍅" },
-            { id: 6, name: "Огурец", icon: "🥒" },
-            { id: 7, name: "Перец", icon: "🫑" },
-            { id: 8, name: "Капуста", icon: "🥬" },
-            { id: 9, name: "Брокколи", icon: "🥦" },
-            { id: 10, name: "Курица", icon: "🍗" },
-            { id: 11, name: "Говядина", icon: "🥩" },
-            { id: 12, name: "Свинина", icon: "🐖" },
-            { id: 13, name: "Рыба", icon: "🐟" },
-            { id: 14, name: "Яйца", icon: "🥚" },
-            { id: 15, name: "Молоко", icon: "🥛" },
-            { id: 16, name: "Сыр", icon: "🧀" },
-            { id: 17, name: "Масло", icon: "🧈" },
-            { id: 18, name: "Сметана", icon: "🥣" },
-            { id: 19, name: "Рис", icon: "🍚" },
-            { id: 20, name: "Макароны", icon: "🍝" },
-            { id: 21, name: "Хлеб", icon: "🍞" },
-            { id: 22, name: "Мука", icon: "🌾" },
-            { id: 23, name: "Сахар", icon: "🍚" },
-            { id: 24, name: "Соль", icon: "🧂" },
-            { id: 25, name: "Перец", icon: "🌶️" },
-            { id: 26, name: "Масло растительное", icon: "🫒" },
-            { id: 27, name: "Зелень", icon: "🌿" },
-            { id: 28, name: "Грибы", icon: "🍄" },
-            { id: 29, name: "Фасоль", icon: "🫘" },
-            { id: 30, name: "Горох", icon: "🫛" }
-        ];
+<script>
+    // Инициализация Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyDcguAmbPrkfHvPnKiD9TtbKkNaXkSbGzU",
+        authDomain: "mydishes-60046.firebaseapp.com",
+        projectId: "mydishes-60046",
+        storageBucket: "mydishes-60046.firebasestorage.app",
+        messagingSenderId: "625904144384",
+        appId: "1:625904144384:web:8c98a6ea3e6c3d06c4c8e5",
+        measurementId: "G-JSMF6HSHR4"
+    };
 
-        // Локальное хранилище для блюд
-        let dishes = JSON.parse(localStorage.getItem('dishes')) || [];
-        
-        // Локальное хранилище для плана на неделю
-        let weekPlan = JSON.parse(localStorage.getItem('weekPlan')) || {
-            monday: { breakfast: [], lunch: [], dinner: [] },
-            tuesday: { breakfast: [], lunch: [], dinner: [] },
-            wednesday: { breakfast: [], lunch: [], dinner: [] },
-            thursday: { breakfast: [], lunch: [], dinner: [] },
-            friday: { breakfast: [], lunch: [], dinner: [] },
-            saturday: { breakfast: [], lunch: [], dinner: [] },
-            sunday: { breakfast: [], lunch: [], dinner: [] }
-        };
-        
-        // Локальное хранилище для холодильника
-        let fridgeItems = JSON.parse(localStorage.getItem('fridgeItems')) || [];
-        
-        // Локальное хранилище для списка покупок
-        let shoppingList = JSON.parse(localStorage.getItem('shoppingList')) || [];
+    // Инициализируем Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-        // DOM элементы
-        const navButtons = document.querySelectorAll('.nav-btn');
-        const sections = document.querySelectorAll('.section');
-        const addDishForm = document.getElementById('add-dish-form');
-        const ingredientSearch = document.getElementById('ingredient-search');
-        const searchResults = document.getElementById('search-results');
-        const selectedIngredients = document.getElementById('selected-ingredients');
-        const dishesContainer = document.getElementById('dishes-container');
-        const daySelects = document.querySelectorAll('.day-select');
-        const generateShoppingListBtn = document.getElementById('generate-shopping-list');
-        const shoppingListContainer = document.getElementById('shopping-list');
-        const fridgeSearch = document.getElementById('fridge-search');
-        const fridgeSearchResults = document.getElementById('fridge-search-results');
-        const fridgeItemsContainer = document.getElementById('fridge-items');
+    // ID пользователя (для одного пользователя)
+    const USER_ID = "single_user";
 
-        // Инициализация приложения
-        document.addEventListener('DOMContentLoaded', function() {
-            // Навигация между секциями
-            navButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const targetId = this.getAttribute('data-target');
-                    
-                    // Обновляем активные кнопки
-                    navButtons.forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    // Показываем целевую секцию
-                    sections.forEach(section => section.classList.remove('active'));
-                    document.getElementById(targetId).classList.add('active');
-                });
+    // База данных ингредиентов с иконками
+    const ingredientsDB = [
+        { id: 1, name: "Картофель", icon: "🥔" },
+        { id: 2, name: "Морковь", icon: "🥕" },
+        { id: 3, name: "Лук", icon: "🧅" },
+        { id: 4, name: "Чеснок", icon: "🧄" },
+        { id: 5, name: "Помидор", icon: "🍅" },
+        { id: 6, name: "Огурец", icon: "🥒" },
+        { id: 7, name: "Перец", icon: "🫑" },
+        { id: 8, name: "Капуста", icon: "🥬" },
+        { id: 9, name: "Брокколи", icon: "🥦" },
+        { id: 10, name: "Курица", icon: "🍗" },
+        { id: 11, name: "Говядина", icon: "🥩" },
+        { id: 12, name: "Свинина", icon: "🐖" },
+        { id: 13, name: "Рыба", icon: "🐟" },
+        { id: 14, name: "Яйца", icon: "🥚" },
+        { id: 15, name: "Молоко", icon: "🥛" },
+        { id: 16, name: "Сыр", icon: "🧀" },
+        { id: 17, name: "Масло", icon: "🧈" },
+        { id: 18, name: "Сметана", icon: "🥣" },
+        { id: 19, name: "Рис", icon: "🍚" },
+        { id: 20, name: "Макароны", icon: "🍝" },
+        { id: 21, name: "Хлеб", icon: "🍞" },
+        { id: 22, name: "Мука", icon: "🌾" },
+        { id: 23, name: "Сахар", icon: "🍚" },
+        { id: 24, name: "Соль", icon: "🧂" },
+        { id: 25, name: "Перец", icon: "🌶️" },
+        { id: 26, name: "Масло растительное", icon: "🫒" },
+        { id: 27, name: "Зелень", icon: "🌿" },
+        { id: 28, name: "Грибы", icon: "🍄" },
+        { id: 29, name: "Фасоль", icon: "🫘" },
+        { id: 30, name: "Горох", icon: "🫛" }
+    ];
+
+    // Локальное хранилище для блюд (кеш)
+    let dishes = [];
+    
+    // Локальное хранилище для плана на неделю (кеш)
+    let weekPlan = {
+        monday: { breakfast: [], lunch: [], dinner: [] },
+        tuesday: { breakfast: [], lunch: [], dinner: [] },
+        wednesday: { breakfast: [], lunch: [], dinner: [] },
+        thursday: { breakfast: [], lunch: [], dinner: [] },
+        friday: { breakfast: [], lunch: [], dinner: [] },
+        saturday: { breakfast: [], lunch: [], dinner: [] },
+        sunday: { breakfast: [], lunch: [], dinner: [] }
+    };
+    
+    // Локальное хранилище для холодильника (кеш)
+    let fridgeItems = [];
+    
+    // Локальное хранилище для списка покупок (кеш)
+    let shoppingList = [];
+
+    // DOM элементы
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const sections = document.querySelectorAll('.section');
+    const addDishForm = document.getElementById('add-dish-form');
+    const ingredientSearch = document.getElementById('ingredient-search');
+    const searchResults = document.getElementById('search-results');
+    const selectedIngredients = document.getElementById('selected-ingredients');
+    const dishesContainer = document.getElementById('dishes-container');
+    const daySelects = document.querySelectorAll('.day-select');
+    const generateShoppingListBtn = document.getElementById('generate-shopping-list');
+    const shoppingListContainer = document.getElementById('shopping-list');
+    const fridgeSearch = document.getElementById('fridge-search');
+    const fridgeSearchResults = document.getElementById('fridge-search-results');
+    const fridgeItemsContainer = document.getElementById('fridge-items');
+
+    // Инициализация приложения
+    document.addEventListener('DOMContentLoaded', function() {
+        // Навигация между секциями
+        navButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                
+                // Обновляем активные кнопки
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Показываем целевую секцию
+                sections.forEach(section => section.classList.remove('active'));
+                document.getElementById(targetId).classList.add('active');
+            });
+        });
+        
+        // Загрузка данных из Firebase
+        loadAllData();
+        
+        // Поиск ингредиентов при добавлении блюда
+        ingredientSearch.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query.length < 2) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            const filteredIngredients = ingredientsDB.filter(ingredient => 
+                ingredient.name.toLowerCase().includes(query)
+            );
+            
+            displaySearchResults(filteredIngredients, searchResults, addIngredient);
+        });
+        
+        // Поиск ингредиентов для холодильника
+        fridgeSearch.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            if (query.length < 2) {
+                fridgeSearchResults.style.display = 'none';
+                return;
+            }
+            
+            const filteredIngredients = ingredientsDB.filter(ingredient => 
+                ingredient.name.toLowerCase().includes(query)
+            );
+            
+            displaySearchResults(filteredIngredients, fridgeSearchResults, addToFridge);
+        });
+        
+        // Добавление нового блюда
+        addDishForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dishName = document.getElementById('dish-name').value;
+            const dishDescription = document.getElementById('dish-description').value;
+            
+            // Получаем выбранные ингредиенты
+            const ingredients = [];
+            selectedIngredients.querySelectorAll('.ingredient-tag').forEach(tag => {
+                const id = parseInt(tag.getAttribute('data-id'));
+                const name = tag.getAttribute('data-name');
+                const icon = tag.getAttribute('data-icon');
+                ingredients.push({ id, name, icon });
             });
             
-            // Загрузка данных
+            if (ingredients.length === 0) {
+                alert('Добавьте хотя бы один ингредиент');
+                return;
+            }
+            
+            // Создаем новое блюдо
+            const newDish = {
+                id: Date.now(),
+                name: dishName,
+                description: dishDescription,
+                ingredients: ingredients
+            };
+            
+            // Добавляем в массив и сохраняем в Firebase
+            dishes.push(newDish);
+            saveDishesToFirebase();
+            
+            // Очищаем форму
+            addDishForm.reset();
+            selectedIngredients.innerHTML = '';
+            
+            // Перезагружаем список блюд
+            loadDishes();
+            
+            // Показываем секцию с блюдами
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector('[data-target="dishes-section"]').classList.add('active');
+            sections.forEach(section => section.classList.remove('active'));
+            document.getElementById('dishes-section').classList.add('active');
+            
+            alert('Блюдо успешно добавлено!');
+        });
+        
+        // Генерация списка покупок
+        generateShoppingListBtn.addEventListener('click', generateShoppingList);
+        document.getElementById('clear-all-data').addEventListener('click', clearAllData);
+    });
+
+    // Функции для работы с Firebase
+    async function loadAllData() {
+        try {
+            await loadDishesFromFirebase();
+            await loadWeekPlanFromFirebase();
+            await loadFridgeItemsFromFirebase();
+            await loadShoppingListFromFirebase();
+            
+            // Обновляем UI после загрузки всех данных
             loadDishes();
             loadWeekPlan();
             loadFridgeItems();
             loadShoppingList();
-            
-            // Поиск ингредиентов при добавлении блюда
-            ingredientSearch.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                if (query.length < 2) {
-                    searchResults.style.display = 'none';
-                    return;
-                }
-                
-                const filteredIngredients = ingredientsDB.filter(ingredient => 
-                    ingredient.name.toLowerCase().includes(query)
-                );
-                
-                displaySearchResults(filteredIngredients, searchResults, addIngredient);
-            });
-            
-            // Поиск ингредиентов для холодильника
-            fridgeSearch.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                if (query.length < 2) {
-                    fridgeSearchResults.style.display = 'none';
-                    return;
-                }
-                
-                const filteredIngredients = ingredientsDB.filter(ingredient => 
-                    ingredient.name.toLowerCase().includes(query)
-                );
-                
-                displaySearchResults(filteredIngredients, fridgeSearchResults, addToFridge);
-            });
-            
-            // Добавление нового блюда
-            addDishForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const dishName = document.getElementById('dish-name').value;
-                const dishDescription = document.getElementById('dish-description').value;
-                
-                // Получаем выбранные ингредиенты
-                const ingredients = [];
-                selectedIngredients.querySelectorAll('.ingredient-tag').forEach(tag => {
-                    const id = parseInt(tag.getAttribute('data-id'));
-                    const name = tag.getAttribute('data-name');
-                    const icon = tag.getAttribute('data-icon');
-                    ingredients.push({ id, name, icon });
-                });
-                
-                if (ingredients.length === 0) {
-                    alert('Добавьте хотя бы один ингредиент');
-                    return;
-                }
-                
-                // Создаем новое блюдо
-                const newDish = {
-                    id: Date.now(),
-                    name: dishName,
-                    description: dishDescription,
-                    ingredients: ingredients
-                };
-                
-                // Добавляем в массив и сохраняем
-                dishes.push(newDish);
-                saveDishes();
-                
-                // Очищаем форму
-                addDishForm.reset();
-                selectedIngredients.innerHTML = '';
-                
-                // Перезагружаем список блюд
-                loadDishes();
-                
-                // Показываем секцию с блюдами
-                navButtons.forEach(btn => btn.classList.remove('active'));
-                document.querySelector('[data-target="dishes-section"]').classList.add('active');
-                sections.forEach(section => section.classList.remove('active'));
-                document.getElementById('dishes-section').classList.add('active');
-                
-                alert('Блюдо успешно добавлено!');
-            });
-            
-            // Генерация списка покупок
-            generateShoppingListBtn.addEventListener('click', generateShoppingList);
-            document.getElementById('clear-all-data').addEventListener('click', clearAllData);
-        });
+        } catch (error) {
+            console.error('Ошибка загрузки данных:', error);
+        }
+    }
 
-        // Функции для работы с данными
-        function saveDishes() {
-            localStorage.setItem('dishes', JSON.stringify(dishes));
+    async function loadDishesFromFirebase() {
+        try {
+            const doc = await db.collection('users').doc(USER_ID).get();
+            if (doc.exists && doc.data().dishes) {
+                dishes = doc.data().dishes;
+            } else {
+                dishes = [];
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки блюд:', error);
+            dishes = [];
+        }
+    }
+
+    async function loadWeekPlanFromFirebase() {
+        try {
+            const doc = await db.collection('users').doc(USER_ID).get();
+            if (doc.exists && doc.data().weekPlan) {
+                weekPlan = doc.data().weekPlan;
+            } else {
+                weekPlan = {
+                    monday: { breakfast: [], lunch: [], dinner: [] },
+                    tuesday: { breakfast: [], lunch: [], dinner: [] },
+                    wednesday: { breakfast: [], lunch: [], dinner: [] },
+                    thursday: { breakfast: [], lunch: [], dinner: [] },
+                    friday: { breakfast: [], lunch: [], dinner: [] },
+                    saturday: { breakfast: [], lunch: [], dinner: [] },
+                    sunday: { breakfast: [], lunch: [], dinner: [] }
+                };
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки плана:', error);
+        }
+    }
+
+    async function loadFridgeItemsFromFirebase() {
+        try {
+            const doc = await db.collection('users').doc(USER_ID).get();
+            if (doc.exists && doc.data().fridgeItems) {
+                fridgeItems = doc.data().fridgeItems;
+            } else {
+                fridgeItems = [];
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки холодильника:', error);
+            fridgeItems = [];
+        }
+    }
+
+    async function loadShoppingListFromFirebase() {
+        try {
+            const doc = await db.collection('users').doc(USER_ID).get();
+            if (doc.exists && doc.data().shoppingList) {
+                shoppingList = doc.data().shoppingList;
+            } else {
+                shoppingList = [];
+            }
+        } catch (error) {
+            console.error('Ошибка загрузки списка покупок:', error);
+            shoppingList = [];
+        }
+    }
+
+    async function saveDishesToFirebase() {
+        try {
+            await db.collection('users').doc(USER_ID).set({
+                dishes: dishes
+            }, { merge: true });
+        } catch (error) {
+            console.error('Ошибка сохранения блюд:', error);
+        }
+    }
+
+    async function saveWeekPlanToFirebase() {
+        try {
+            await db.collection('users').doc(USER_ID).set({
+                weekPlan: weekPlan
+            }, { merge: true });
+        } catch (error) {
+            console.error('Ошибка сохранения плана:', error);
+        }
+    }
+
+    async function saveFridgeItemsToFirebase() {
+        try {
+            await db.collection('users').doc(USER_ID).set({
+                fridgeItems: fridgeItems
+            }, { merge: true });
+        } catch (error) {
+            console.error('Ошибка сохранения холодильника:', error);
+        }
+    }
+
+    async function saveShoppingListToFirebase() {
+        try {
+            await db.collection('users').doc(USER_ID).set({
+                shoppingList: shoppingList
+            }, { merge: true });
+        } catch (error) {
+            console.error('Ошибка сохранения списка покупок:', error);
+        }
+    }
+
+    // Функции для работы с данными (обновленные для работы с Firebase)
+    function saveDishes() {
+        saveDishesToFirebase();
+    }
+    
+    function saveWeekPlan() {
+        saveWeekPlanToFirebase();
+    }
+    
+    function saveFridgeItems() {
+        saveFridgeItemsToFirebase();
+    }
+    
+    function saveShoppingList() {
+        saveShoppingListToFirebase();
+    }
+    
+    function loadDishes() {
+        dishesContainer.innerHTML = '';
+        
+        if (dishes.length === 0) {
+            dishesContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-utensils"></i>
+                    <h3>Пока нет добавленных блюд</h3>
+                    <p>Добавьте свое первое блюдо!</p>
+                </div>
+            `;
+            return;
         }
         
-        function saveWeekPlan() {
-            localStorage.setItem('weekPlan', JSON.stringify(weekPlan));
-        }
-        
-        function saveFridgeItems() {
-            localStorage.setItem('fridgeItems', JSON.stringify(fridgeItems));
-        }
-        
-        function saveShoppingList() {
-            localStorage.setItem('shoppingList', JSON.stringify(shoppingList));
-        }
-        
-        function loadDishes() {
-            dishesContainer.innerHTML = '';
+        dishes.forEach(dish => {
+            const dishCard = document.createElement('div');
+            dishCard.className = 'dish-card';
             
-            if (dishes.length === 0) {
-                dishesContainer.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-utensils"></i>
-                        <h3>Пока нет добавленных блюд</h3>
-                        <p>Добавьте свое первое блюдо!</p>
+            const ingredientsText = dish.ingredients.map(ing => ing.name).join(', ');
+            
+            dishCard.innerHTML = `
+                <div class="dish-image">
+                    <i class="fas fa-utensils"></i>
+                </div>
+                <div class="dish-content">
+                    <div class="dish-title">${dish.name}</div>
+                    <div class="dish-ingredients">${ingredientsText}</div>
+                    <div class="dish-actions">
+                        <button class="btn btn-secondary select-dish" data-id="${dish.id}">
+                            <i class="fas fa-calendar-plus"></i> Выбрать
+                        </button>
+                        <button class="btn btn-danger delete-dish" data-id="${dish.id}">
+                            <i class="fas fa-trash"></i> Удалить
+                        </button>
                     </div>
-                `;
-                return;
+                </div>
+            `;
+            
+            dishesContainer.appendChild(dishCard);
+        });
+        
+        // Добавляем обработчики для кнопок
+        document.querySelectorAll('.select-dish').forEach(button => {
+            button.addEventListener('click', function() {
+                const dishId = parseInt(this.getAttribute('data-id'));
+                selectDishForWeek(dishId);
+            });
+        });
+        
+        document.querySelectorAll('.delete-dish').forEach(button => {
+            button.addEventListener('click', function() {
+                const dishId = parseInt(this.getAttribute('data-id'));
+                deleteDish(dishId);
+            });
+        });
+        
+        // Обновляем опции в селектах недельного плана
+        updateWeekPlanSelects();
+    }
+    
+    function loadWeekPlan() {
+        const weekPlanContainer = document.getElementById('week-plan');
+        weekPlanContainer.innerHTML = '';
+        
+        const days = [
+            { key: 'monday', name: 'Понедельник', icon: '📅' },
+            { key: 'tuesday', name: 'Вторник', icon: '📅' },
+            { key: 'wednesday', name: 'Среда', icon: '📅' },
+            { key: 'thursday', name: 'Четверг', icon: '📅' },
+            { key: 'friday', name: 'Пятница', icon: '📅' },
+            { key: 'saturday', name: 'Суббота', icon: '🎉' },
+            { key: 'sunday', name: 'Воскресенье', icon: '🌞' }
+        ];
+        
+        days.forEach(day => {
+            const dayCard = document.createElement('div');
+            dayCard.className = 'compact-day-card';
+            
+            dayCard.innerHTML = `
+                <div class="day-header">
+                    <div class="day-title">${day.icon} ${day.name}</div>
+                </div>
+                <div class="meal-times">
+                    <div class="meal-time">
+                        <div class="meal-label"><i class="fas fa-sun"></i> Завтрак</div>
+                        <div class="meal-select-container">
+                            <select class="meal-select" data-day="${day.key}" data-meal="breakfast">
+                                <option value="">Выберите блюдо</option>
+                            </select>
+                            <button class="add-meal-btn" data-day="${day.key}" data-meal="breakfast">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="selected-meals" id="${day.key}-breakfast">
+                            <!-- Выбранные блюда будут здесь -->
+                        </div>
+                    </div>
+                    <div class="meal-time">
+                        <div class="meal-label"><i class="fas fa-cloud-sun"></i> Обед</div>
+                        <div class="meal-select-container">
+                            <select class="meal-select" data-day="${day.key}" data-meal="lunch">
+                                <option value="">Выберите блюдо</option>
+                            </select>
+                            <button class="add-meal-btn" data-day="${day.key}" data-meal="lunch">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="selected-meals" id="${day.key}-lunch">
+                            <!-- Выбранные блюда будут здесь -->
+                        </div>
+                    </div>
+                    <div class="meal-time">
+                        <div class="meal-label"><i class="fas fa-moon"></i> Ужин</div>
+                        <div class="meal-select-container">
+                            <select class="meal-select" data-day="${day.key}" data-meal="dinner">
+                                <option value="">Выберите блюдо</option>
+                            </select>
+                            <button class="add-meal-btn" data-day="${day.key}" data-meal="dinner">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div class="selected-meals" id="${day.key}-dinner">
+                            <!-- Выбранные блюда будут здесь -->
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            weekPlanContainer.appendChild(dayCard);
+        });
+        
+        // Обновляем селекты и выбранные блюда
+        updateWeekPlanSelects();
+        updateSelectedMeals();
+        
+        // Добавляем обработчики для кнопок добавления блюд
+        document.querySelectorAll('.add-meal-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const day = this.getAttribute('data-day');
+                const meal = this.getAttribute('data-meal');
+                const select = document.querySelector(`.meal-select[data-day="${day}"][data-meal="${meal}"]`);
+                const dishId = parseInt(select.value);
+                
+                if (dishId) {
+                    addDishToPlan(day, meal, dishId);
+                }
+            });
+        });
+    }
+    
+    function loadFridgeItems() {
+        fridgeItemsContainer.innerHTML = '';
+        
+        if (fridgeItems.length === 0) {
+            fridgeItemsContainer.innerHTML = `
+                <div style="width: 100%; text-align: center; color: var(--gray); padding: 10px;">
+                    Холодильник пуст
+                </div>
+            `;
+            return;
+        }
+        
+        fridgeItems.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'fridge-item';
+            itemElement.innerHTML = `
+                <span class="ingredient-icon">${item.icon}</span>
+                ${item.name}
+                <span class="remove" data-id="${item.id}">&times;</span>
+            `;
+            
+            fridgeItemsContainer.appendChild(itemElement);
+        });
+        
+        // Добавляем обработчики для удаления
+        document.querySelectorAll('.fridge-item .remove').forEach(button => {
+            button.addEventListener('click', function() {
+                const ingredientId = parseInt(this.getAttribute('data-id'));
+                removeFromFridge(ingredientId);
+            });
+        });
+    }
+    
+    function loadShoppingList() {
+        shoppingListContainer.innerHTML = '';
+        
+        if (shoppingList.length === 0) {
+            shoppingListContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h3>Список покупок пуст</h3>
+                    <p>Сгенерируйте список покупок из плана питания</p>
+                </div>
+            `;
+            return;
+        }
+        
+        shoppingList.forEach(item => {
+            const listItem = document.createElement('div');
+            listItem.className = 'shopping-item';
+            listItem.innerHTML = `
+                <div class="item-info">
+                    <input type="checkbox" class="checkbox" ${item.checked ? 'checked' : ''}>
+                    <span class="ingredient-icon">${item.icon}</span>
+                    <span class="item-name" style="${item.checked ? 'text-decoration: line-through; color: var(--gray);' : ''}">${item.name}</span>
+                </div>
+                <div class="item-actions">
+                    <button class="btn btn-danger remove-item" data-id="${item.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            shoppingListContainer.appendChild(listItem);
+        });
+        
+        // Добавляем обработчики для чекбоксов и кнопок удаления
+        document.querySelectorAll('.shopping-item .checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const itemName = this.closest('.shopping-item').querySelector('.item-name').textContent;
+                toggleShoppingItem(itemName);
+            });
+        });
+        
+        document.querySelectorAll('.remove-item').forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = parseInt(this.getAttribute('data-id'));
+                removeFromShoppingList(itemId);
+            });
+        });
+    }
+    
+    function displaySearchResults(results, container, clickHandler) {
+        container.innerHTML = '';
+        
+        if (results.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        
+        results.forEach(ingredient => {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'search-result-item';
+            resultItem.innerHTML = `
+                <span class="ingredient-icon">${ingredient.icon}</span>
+                ${ingredient.name}
+            `;
+            
+            resultItem.addEventListener('click', function() {
+                clickHandler(ingredient);
+                container.style.display = 'none';
+            });
+            
+            container.appendChild(resultItem);
+        });
+        
+        container.style.display = 'block';
+    }
+    
+    function addIngredient(ingredient) {
+        // Проверяем, не добавлен ли уже ингредиент
+        const isAlreadyAdded = Array.from(selectedIngredients.querySelectorAll('.ingredient-tag'))
+            .some(tag => parseInt(tag.getAttribute('data-id')) === ingredient.id);
+        
+        if (isAlreadyAdded) {
+            return;
+        }
+        
+        const ingredientTag = document.createElement('div');
+        ingredientTag.className = 'ingredient-tag';
+        ingredientTag.setAttribute('data-id', ingredient.id);
+        ingredientTag.setAttribute('data-name', ingredient.name);
+        ingredientTag.setAttribute('data-icon', ingredient.icon);
+        ingredientTag.innerHTML = `
+            <span class="ingredient-icon">${ingredient.icon}</span>
+            ${ingredient.name}
+            <span class="remove">&times;</span>
+        `;
+        
+        // Добавляем обработчик для удаления
+        ingredientTag.querySelector('.remove').addEventListener('click', function() {
+            ingredientTag.remove();
+        });
+        
+        selectedIngredients.appendChild(ingredientTag);
+        ingredientSearch.value = '';
+        searchResults.style.display = 'none';
+    }
+    
+    function addToFridge(ingredient) {
+        // Проверяем, не добавлен ли уже ингредиент
+        const isAlreadyAdded = fridgeItems.some(item => item.id === ingredient.id);
+        
+        if (isAlreadyAdded) {
+            return;
+        }
+        
+        fridgeItems.push(ingredient);
+        saveFridgeItems();
+        loadFridgeItems();
+        
+        fridgeSearch.value = '';
+        fridgeSearchResults.style.display = 'none';
+    }
+    
+    function removeFromFridge(ingredientId) {
+        fridgeItems = fridgeItems.filter(item => item.id !== ingredientId);
+        saveFridgeItems();
+        loadFridgeItems();
+    }
+    
+    function selectDishForWeek(dishId) {
+        // Переходим к разделу плана питания
+        navButtons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector('[data-target="week-plan-section"]').classList.add('active');
+        sections.forEach(section => section.classList.remove('active'));
+        document.getElementById('week-plan-section').classList.add('active');
+    }
+    
+    function deleteDish(dishId) {
+        if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
+            dishes = dishes.filter(dish => dish.id !== dishId);
+            saveDishes();
+            loadDishes();
+        }
+    }
+    
+    function updateWeekPlanSelects() {
+        document.querySelectorAll('.meal-select').forEach(select => {
+            // Сохраняем текущее значение
+            const currentValue = select.value;
+            
+            // Очищаем опции (кроме первой)
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
             }
             
+            // Добавляем блюда
             dishes.forEach(dish => {
-                const dishCard = document.createElement('div');
-                dishCard.className = 'dish-card';
-                
-                const ingredientsText = dish.ingredients.map(ing => ing.name).join(', ');
-                
-                dishCard.innerHTML = `
-                    <div class="dish-image">
-                        <i class="fas fa-utensils"></i>
-                    </div>
-                    <div class="dish-content">
-                        <div class="dish-title">${dish.name}</div>
-                        <div class="dish-ingredients">${ingredientsText}</div>
-                        <div class="dish-actions">
-                            <button class="btn btn-secondary select-dish" data-id="${dish.id}">
-                                <i class="fas fa-calendar-plus"></i> Выбрать
-                            </button>
-                            <button class="btn btn-danger delete-dish" data-id="${dish.id}">
-                                <i class="fas fa-trash"></i> Удалить
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                dishesContainer.appendChild(dishCard);
+                const option = document.createElement('option');
+                option.value = dish.id;
+                option.textContent = dish.name;
+                select.appendChild(option);
             });
             
-            // Добавляем обработчики для кнопок
-            document.querySelectorAll('.select-dish').forEach(button => {
-                button.addEventListener('click', function() {
-                    const dishId = parseInt(this.getAttribute('data-id'));
-                    selectDishForWeek(dishId);
-                });
-            });
-            
-            document.querySelectorAll('.delete-dish').forEach(button => {
-                button.addEventListener('click', function() {
-                    const dishId = parseInt(this.getAttribute('data-id'));
-                    deleteDish(dishId);
-                });
-            });
-            
-            // Обновляем опции в селектах недельного плана
-            updateWeekPlanSelects();
-        }
-        
-        function loadWeekPlan() {
-            const weekPlanContainer = document.getElementById('week-plan');
-            weekPlanContainer.innerHTML = '';
-            
-            const days = [
-                { key: 'monday', name: 'Понедельник', icon: '📅' },
-                { key: 'tuesday', name: 'Вторник', icon: '📅' },
-                { key: 'wednesday', name: 'Среда', icon: '📅' },
-                { key: 'thursday', name: 'Четверг', icon: '📅' },
-                { key: 'friday', name: 'Пятница', icon: '📅' },
-                { key: 'saturday', name: 'Суббота', icon: '🎉' },
-                { key: 'sunday', name: 'Воскресенье', icon: '🌞' }
-            ];
-            
-            days.forEach(day => {
-                const dayCard = document.createElement('div');
-                dayCard.className = 'compact-day-card';
+            // Восстанавливаем значение, если оно есть
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        });
+    }
+    
+    function updateSelectedMeals() {
+        Object.keys(weekPlan).forEach(day => {
+            ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+                const container = document.getElementById(`${day}-${meal}`);
+                container.innerHTML = '';
                 
-                dayCard.innerHTML = `
-                    <div class="day-header">
-                        <div class="day-title">${day.icon} ${day.name}</div>
-                    </div>
-                    <div class="meal-times">
-                        <div class="meal-time">
-                            <div class="meal-label"><i class="fas fa-sun"></i> Завтрак</div>
-                            <div class="meal-select-container">
-                                <select class="meal-select" data-day="${day.key}" data-meal="breakfast">
-                                    <option value="">Выберите блюдо</option>
-                                </select>
-                                <button class="add-meal-btn" data-day="${day.key}" data-meal="breakfast">
-                                    <i class="fas fa-plus"></i>
+                weekPlan[day][meal].forEach(dishId => {
+                    const dish = dishes.find(d => d.id === dishId);
+                    if (dish) {
+                        const mealElement = document.createElement('div');
+                        mealElement.className = 'selected-meal';
+                        mealElement.innerHTML = `
+                            ${dish.name}
+                            <div class="meal-actions">
+                                <button class="remove-meal" data-day="${day}" data-meal="${meal}" data-dish="${dishId}">
+                                    <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                            <div class="selected-meals" id="${day.key}-breakfast">
-                                <!-- Выбранные блюда будут здесь -->
-                            </div>
-                        </div>
-                        <div class="meal-time">
-                            <div class="meal-label"><i class="fas fa-cloud-sun"></i> Обед</div>
-                            <div class="meal-select-container">
-                                <select class="meal-select" data-day="${day.key}" data-meal="lunch">
-                                    <option value="">Выберите блюдо</option>
-                                </select>
-                                <button class="add-meal-btn" data-day="${day.key}" data-meal="lunch">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div class="selected-meals" id="${day.key}-lunch">
-                                <!-- Выбранные блюда будут здесь -->
-                            </div>
-                        </div>
-                        <div class="meal-time">
-                            <div class="meal-label"><i class="fas fa-moon"></i> Ужин</div>
-                            <div class="meal-select-container">
-                                <select class="meal-select" data-day="${day.key}" data-meal="dinner">
-                                    <option value="">Выберите блюдо</option>
-                                </select>
-                                <button class="add-meal-btn" data-day="${day.key}" data-meal="dinner">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                            <div class="selected-meals" id="${day.key}-dinner">
-                                <!-- Выбранные блюда будут здесь -->
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                weekPlanContainer.appendChild(dayCard);
-            });
-            
-            // Обновляем селекты и выбранные блюда
-            updateWeekPlanSelects();
-            updateSelectedMeals();
-            
-            // Добавляем обработчики для кнопок добавления блюд
-            document.querySelectorAll('.add-meal-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const day = this.getAttribute('data-day');
-                    const meal = this.getAttribute('data-meal');
-                    const select = document.querySelector(`.meal-select[data-day="${day}"][data-meal="${meal}"]`);
-                    const dishId = parseInt(select.value);
-                    
-                    if (dishId) {
-                        addDishToPlan(day, meal, dishId);
+                        `;
+                        
+                        container.appendChild(mealElement);
                     }
                 });
             });
-        }
+        });
         
-        function loadFridgeItems() {
-            fridgeItemsContainer.innerHTML = '';
-            
-            if (fridgeItems.length === 0) {
-                fridgeItemsContainer.innerHTML = `
-                    <div style="width: 100%; text-align: center; color: var(--gray); padding: 10px;">
-                        Холодильник пуст
-                    </div>
-                `;
-                return;
-            }
-            
-            fridgeItems.forEach(item => {
-                const itemElement = document.createElement('div');
-                itemElement.className = 'fridge-item';
-                itemElement.innerHTML = `
-                    <span class="ingredient-icon">${item.icon}</span>
-                    ${item.name}
-                    <span class="remove" data-id="${item.id}">&times;</span>
-                `;
+        // Добавляем обработчики для удаления блюд из плана
+        document.querySelectorAll('.remove-meal').forEach(button => {
+            button.addEventListener('click', function() {
+                const day = this.getAttribute('data-day');
+                const meal = this.getAttribute('data-meal');
+                const dishId = parseInt(this.getAttribute('data-dish'));
                 
-                fridgeItemsContainer.appendChild(itemElement);
+                removeDishFromPlan(day, meal, dishId);
             });
-            
-            // Добавляем обработчики для удаления
-            document.querySelectorAll('.fridge-item .remove').forEach(button => {
-                button.addEventListener('click', function() {
-                    const ingredientId = parseInt(this.getAttribute('data-id'));
-                    removeFromFridge(ingredientId);
-                });
-            });
-        }
-        
-        function loadShoppingList() {
-            shoppingListContainer.innerHTML = '';
-            
-            if (shoppingList.length === 0) {
-                shoppingListContainer.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-shopping-cart"></i>
-                        <h3>Список покупок пуст</h3>
-                        <p>Сгенерируйте список покупок из плана питания</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            shoppingList.forEach(item => {
-                const listItem = document.createElement('div');
-                listItem.className = 'shopping-item';
-                listItem.innerHTML = `
-                    <div class="item-info">
-                        <input type="checkbox" class="checkbox" ${item.checked ? 'checked' : ''}>
-                        <span class="ingredient-icon">${item.icon}</span>
-                        <span class="item-name" style="${item.checked ? 'text-decoration: line-through; color: var(--gray);' : ''}">${item.name}</span>
-                    </div>
-                    <div class="item-actions">
-                        <button class="btn btn-danger remove-item" data-id="${item.id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-                
-                shoppingListContainer.appendChild(listItem);
-            });
-            
-            // Добавляем обработчики для чекбоксов и кнопок удаления
-            document.querySelectorAll('.shopping-item .checkbox').forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const itemName = this.closest('.shopping-item').querySelector('.item-name').textContent;
-                    toggleShoppingItem(itemName);
-                });
-            });
-            
-            document.querySelectorAll('.remove-item').forEach(button => {
-                button.addEventListener('click', function() {
-                    const itemId = parseInt(this.getAttribute('data-id'));
-                    removeFromShoppingList(itemId);
-                });
-            });
-        }
-        
-        function displaySearchResults(results, container, clickHandler) {
-            container.innerHTML = '';
-            
-            if (results.length === 0) {
-                container.style.display = 'none';
-                return;
-            }
-            
-            results.forEach(ingredient => {
-                const resultItem = document.createElement('div');
-                resultItem.className = 'search-result-item';
-                resultItem.innerHTML = `
-                    <span class="ingredient-icon">${ingredient.icon}</span>
-                    ${ingredient.name}
-                `;
-                
-                resultItem.addEventListener('click', function() {
-                    clickHandler(ingredient);
-                    container.style.display = 'none';
-                });
-                
-                container.appendChild(resultItem);
-            });
-            
-            container.style.display = 'block';
-        }
-        
-        function addIngredient(ingredient) {
-            // Проверяем, не добавлен ли уже ингредиент
-            const isAlreadyAdded = Array.from(selectedIngredients.querySelectorAll('.ingredient-tag'))
-                .some(tag => parseInt(tag.getAttribute('data-id')) === ingredient.id);
-            
-            if (isAlreadyAdded) {
-                return;
-            }
-            
-            const ingredientTag = document.createElement('div');
-            ingredientTag.className = 'ingredient-tag';
-            ingredientTag.setAttribute('data-id', ingredient.id);
-            ingredientTag.setAttribute('data-name', ingredient.name);
-            ingredientTag.setAttribute('data-icon', ingredient.icon);
-            ingredientTag.innerHTML = `
-                <span class="ingredient-icon">${ingredient.icon}</span>
-                ${ingredient.name}
-                <span class="remove">&times;</span>
-            `;
-            
-            // Добавляем обработчик для удаления
-            ingredientTag.querySelector('.remove').addEventListener('click', function() {
-                ingredientTag.remove();
-            });
-            
-            selectedIngredients.appendChild(ingredientTag);
-            ingredientSearch.value = '';
-            searchResults.style.display = 'none';
-        }
-        
-        function addToFridge(ingredient) {
-            // Проверяем, не добавлен ли уже ингредиент
-            const isAlreadyAdded = fridgeItems.some(item => item.id === ingredient.id);
-            
-            if (isAlreadyAdded) {
-                return;
-            }
-            
-            fridgeItems.push(ingredient);
-            saveFridgeItems();
-            loadFridgeItems();
-            
-            fridgeSearch.value = '';
-            fridgeSearchResults.style.display = 'none';
-        }
-        
-        function removeFromFridge(ingredientId) {
-            fridgeItems = fridgeItems.filter(item => item.id !== ingredientId);
-            saveFridgeItems();
-            loadFridgeItems();
-        }
-        
-        function selectDishForWeek(dishId) {
-            // Переходим к разделу плана питания
-            navButtons.forEach(btn => btn.classList.remove('active'));
-            document.querySelector('[data-target="week-plan-section"]').classList.add('active');
-            sections.forEach(section => section.classList.remove('active'));
-            document.getElementById('week-plan-section').classList.add('active');
-        }
-        
-        function deleteDish(dishId) {
-            if (confirm('Вы уверены, что хотите удалить это блюдо?')) {
-                dishes = dishes.filter(dish => dish.id !== dishId);
-                saveDishes();
-                loadDishes();
-            }
-        }
-        
-        function updateWeekPlanSelects() {
-            document.querySelectorAll('.meal-select').forEach(select => {
-                // Сохраняем текущее значение
-                const currentValue = select.value;
-                
-                // Очищаем опции (кроме первой)
-                while (select.children.length > 1) {
-                    select.removeChild(select.lastChild);
-                }
-                
-                // Добавляем блюда
-                dishes.forEach(dish => {
-                    const option = document.createElement('option');
-                    option.value = dish.id;
-                    option.textContent = dish.name;
-                    select.appendChild(option);
-                });
-                
-                // Восстанавливаем значение, если оно есть
-                if (currentValue) {
-                    select.value = currentValue;
-                }
-            });
-        }
-        
-        function updateSelectedMeals() {
-            Object.keys(weekPlan).forEach(day => {
-                ['breakfast', 'lunch', 'dinner'].forEach(meal => {
-                    const container = document.getElementById(`${day}-${meal}`);
-                    container.innerHTML = '';
-                    
-                    weekPlan[day][meal].forEach(dishId => {
-                        const dish = dishes.find(d => d.id === dishId);
-                        if (dish) {
-                            const mealElement = document.createElement('div');
-                            mealElement.className = 'selected-meal';
-                            mealElement.innerHTML = `
-                                ${dish.name}
-                                <div class="meal-actions">
-                                    <button class="remove-meal" data-day="${day}" data-meal="${meal}" data-dish="${dishId}">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            `;
-                            
-                            container.appendChild(mealElement);
-                        }
-                    });
-                });
-            });
-            
-            // Добавляем обработчики для удаления блюд из плана
-            document.querySelectorAll('.remove-meal').forEach(button => {
-                button.addEventListener('click', function() {
-                    const day = this.getAttribute('data-day');
-                    const meal = this.getAttribute('data-meal');
-                    const dishId = parseInt(this.getAttribute('data-dish'));
-                    
-                    removeDishFromPlan(day, meal, dishId);
-                });
-            });
-        }
-        
-        function addDishToPlan(day, meal, dishId) {
-            // Проверяем, не добавлено ли уже это блюдо
-            if (!weekPlan[day][meal].includes(dishId)) {
-                weekPlan[day][meal].push(dishId);
-                saveWeekPlan();
-                updateSelectedMeals();
-            }
-        }
-        
-        function removeDishFromPlan(day, meal, dishId) {
-            weekPlan[day][meal] = weekPlan[day][meal].filter(id => id !== dishId);
+        });
+    }
+    
+    function addDishToPlan(day, meal, dishId) {
+        // Проверяем, не добавлено ли уже это блюдо
+        if (!weekPlan[day][meal].includes(dishId)) {
+            weekPlan[day][meal].push(dishId);
             saveWeekPlan();
             updateSelectedMeals();
         }
+    }
+    
+    function removeDishFromPlan(day, meal, dishId) {
+        weekPlan[day][meal] = weekPlan[day][meal].filter(id => id !== dishId);
+        saveWeekPlan();
+        updateSelectedMeals();
+    }
+    
+    function generateShoppingList() {
+        // Собираем все ингредиенты из плана на неделю
+        const allIngredients = [];
         
-        function generateShoppingList() {
-            // Собираем все ингредиенты из плана на неделю
-            const allIngredients = [];
-            
-            Object.keys(weekPlan).forEach(day => {
-                ['breakfast', 'lunch', 'dinner'].forEach(meal => {
-                    weekPlan[day][meal].forEach(dishId => {
-                        const dish = dishes.find(d => d.id === dishId);
-                        if (dish) {
-                            dish.ingredients.forEach(ingredient => {
-                                allIngredients.push(ingredient);
-                            });
-                        }
-                    });
+        Object.keys(weekPlan).forEach(day => {
+            ['breakfast', 'lunch', 'dinner'].forEach(meal => {
+                weekPlan[day][meal].forEach(dishId => {
+                    const dish = dishes.find(d => d.id === dishId);
+                    if (dish) {
+                        dish.ingredients.forEach(ingredient => {
+                            allIngredients.push(ingredient);
+                        });
+                    }
                 });
             });
-            
-            // Группируем ингредиенты по id и исключаем те, что есть в холодильнике
-            const ingredientCounts = {};
-            allIngredients.forEach(ingredient => {
-                if (!fridgeItems.some(item => item.id === ingredient.id)) {
-                    if (!ingredientCounts[ingredient.id]) {
-                        ingredientCounts[ingredient.id] = {
-                            ...ingredient,
-                            count: 1
-                        };
-                    } else {
-                        ingredientCounts[ingredient.id].count++;
-                    }
+        });
+        
+        // Группируем ингредиенты по id и исключаем те, что есть в холодильнике
+        const ingredientCounts = {};
+        allIngredients.forEach(ingredient => {
+            if (!fridgeItems.some(item => item.id === ingredient.id)) {
+                if (!ingredientCounts[ingredient.id]) {
+                    ingredientCounts[ingredient.id] = {
+                        ...ingredient,
+                        count: 1
+                    };
+                } else {
+                    ingredientCounts[ingredient.id].count++;
                 }
-            });
-            
-            // Формируем список покупок
-            shoppingList = Object.values(ingredientCounts).map(item => ({
-                id: item.id,
-                name: item.count > 1 ? `${item.name} (x${item.count})` : item.name,
-                icon: item.icon,
-                checked: false
-            }));
-            
-            saveShoppingList();
-            loadShoppingList();
-            
-            // Переходим к списку покупок
-            navButtons.forEach(btn => btn.classList.remove('active'));
-            document.querySelector('[data-target="shopping-list-section"]').classList.add('active');
-            sections.forEach(section => section.classList.remove('active'));
-            document.getElementById('shopping-list-section').classList.add('active');
-            
-            alert('Список покупок сгенерирован!');
-        }
+            }
+        });
         
-        function toggleShoppingItem(itemName) {
-            // Находим элемент по имени (без количества, если есть)
-            const baseName = itemName.replace(/\s*\(x\d+\)$/, '');
-            
-            shoppingList.forEach(item => {
-                const itemBaseName = item.name.replace(/\s*\(x\d+\)$/, '');
-                if (itemBaseName === baseName) {
-                    item.checked = !item.checked;
-                }
-            });
-            
-            saveShoppingList();
-            loadShoppingList();
-        }
+        // Формируем список покупок
+        shoppingList = Object.values(ingredientCounts).map(item => ({
+            id: item.id,
+            name: item.count > 1 ? `${item.name} (x${item.count})` : item.name,
+            icon: item.icon,
+            checked: false
+        }));
         
-        function removeFromShoppingList(itemId) {
-            shoppingList = shoppingList.filter(item => item.id !== itemId);
-            saveShoppingList();
-            loadShoppingList();
-        }
+        saveShoppingList();
+        loadShoppingList();
         
-        function clearAllData() {
-            if (confirm('Вы уверены, что хотите удалить все данные? Это действие нельзя отменить.')) {
-                localStorage.clear();
+        // Переходим к списку покупок
+        navButtons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector('[data-target="shopping-list-section"]').classList.add('active');
+        sections.forEach(section => section.classList.remove('active'));
+        document.getElementById('shopping-list-section').classList.add('active');
+        
+        alert('Список покупок сгенерирован!');
+    }
+    
+    function toggleShoppingItem(itemName) {
+        // Находим элемент по имени (без количества, если есть)
+        const baseName = itemName.replace(/\s*\(x\d+\)$/, '');
+        
+        shoppingList.forEach(item => {
+            const itemBaseName = item.name.replace(/\s*\(x\d+\)$/, '');
+            if (itemBaseName === baseName) {
+                item.checked = !item.checked;
+            }
+        });
+        
+        saveShoppingList();
+        loadShoppingList();
+    }
+    
+    function removeFromShoppingList(itemId) {
+        shoppingList = shoppingList.filter(item => item.id !== itemId);
+        saveShoppingList();
+        loadShoppingList();
+    }
+    
+    async function clearAllData() {
+        if (confirm('Вы уверены, что хотите удалить все данные? Это действие нельзя отменить.')) {
+            try {
+                // Очищаем Firebase
+                await db.collection('users').doc(USER_ID).delete();
+                
+                // Очищаем локальные данные
                 dishes = [];
                 weekPlan = {
                     monday: { breakfast: [], lunch: [], dinner: [] },
@@ -1458,103 +1598,12 @@
                 loadShoppingList();
                 
                 alert('Все данные удалены!');
+            } catch (error) {
+                console.error('Ошибка удаления данных:', error);
+                alert('Произошла ошибка при удалении данных');
             }
         }
-		
-// Инициализация Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyDcguAmbPrkfHvPnKiD9TtbKkNaXkSbGzU",
-  authDomain: "mydishes-60046.firebaseapp.com",
-  databaseURL: "https://mydishes-60046-default-rtdb.firebaseio.com", // Добавьте эту строку
-  projectId: "mydishes-60046",
-  storageBucket: "mydishes-60046.firebasestorage.app",
-  messagingSenderId: "625904144384",
-  appId: "1:625904144384:web:8c98a6ea3e6c3d06c4c8e5",
-  measurementId: "G-JSMF6HSHR4"
-};
-
-// Инициализируем Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
-loadDataFromFirebase(); // можно оставить для первой загрузки
-listenToFirebaseChanges(); // добавляем для синхронизации
-
-// Функция для сохранения всех данных в Firebase
-function saveAllDataToFirebase() {
-  const userKey = 'anonymousUser';
-  
-  const allData = {
-    dishes: dishes,
-    weekPlan: weekPlan,
-    fridgeItems: fridgeItems,
-    shoppingList: shoppingList,
-    lastUpdated: new Date().toISOString()
-  };
-  
-  database.ref('users/' + userKey).set(allData)
-    .then(() => {
-      console.log('Данные сохранены в Firebase');
-    })
-    .catch((error) => {
-      console.error('Ошибка сохранения в Firebase:', error);
-    });
-}
-
-// Функция для загрузки данных из Firebase
-function listenToFirebaseChanges() {
-  const userKey = 'anonymousUser';
-  
-  database.ref('users/' + userKey).on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      if (data.dishes) dishes = data.dishes;
-      if (data.weekPlan) weekPlan = data.weekPlan;
-      if (data.fridgeItems) fridgeItems = data.fridgeItems;
-      if (data.shoppingList) shoppingList = data.shoppingList;
-      
-      saveDishes();
-      saveWeekPlan();
-      saveFridgeItems();
-      saveShoppingList();
-      
-      loadDishes();
-      loadWeekPlan();
-      loadFridgeItems();
-      loadShoppingList();
-      
-      console.log('🔄 Данные обновлены из Firebase');
     }
-  }, (error) => {
-    console.error('Ошибка прослушивания Firebase:', error);
-  });
-}
-
-// Модифицируем функции сохранения для автоматической синхронизации с Firebase
-const originalSaveDishes = saveDishes;
-saveDishes = function() {
-  originalSaveDishes();
-  saveAllDataToFirebase();
-};
-
-const originalSaveWeekPlan = saveWeekPlan;
-saveWeekPlan = function() {
-  originalSaveWeekPlan();
-  saveAllDataToFirebase();
-};
-
-const originalSaveFridgeItems = saveFridgeItems;
-saveFridgeItems = function() {
-  originalSaveFridgeItems();
-  saveAllDataToFirebase();
-};
-
-const originalSaveShoppingList = saveShoppingList;
-saveShoppingList = function() {
-  originalSaveShoppingList();
-  saveAllDataToFirebase();
-};
-  
-    </script>
+</script>
 </body>
 </html>
