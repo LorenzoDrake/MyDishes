@@ -76,7 +76,7 @@
 
 nav {
             display: flex;
-            gap: 8px;
+            gap: 12px;
             overflow-x: auto;
             padding-bottom: 5px;
             -webkit-overflow-scrolling: touch;
@@ -95,7 +95,7 @@ nav::-webkit-scrollbar {
 }
 
 .nav-btn {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgb(231 135 151);
     color: white;
     border: none;
     padding: 8px 12px; /* Уменьшили padding */
@@ -114,11 +114,11 @@ nav::-webkit-scrollbar {
     .header-content {
         flex-direction: column;
         gap: 10px;
-        padding: 0 10px;
+        //padding: 0 10px;
     }
     
     nav {
-        gap: 6px;
+        gap: 4px;
         margin: 0 -10px;
         padding-left: 10px;
         padding-right: 10px;
@@ -126,11 +126,11 @@ nav::-webkit-scrollbar {
     
     .nav-btn {
         padding: 7px 10px;
-        font-size: 0.75rem;
+        font-size: 0.82rem;
     }
     
     .nav-btn i {
-        font-size: 0.7rem; /* Уменьшаем иконки */
+        font-size: 0.76rem; /* Уменьшаем иконки */
     }
 }
 
@@ -138,7 +138,7 @@ nav::-webkit-scrollbar {
 @media (max-width: 360px) {
     .nav-btn {
         padding: 6px 8px;
-        font-size: 0.7rem;
+        font-size: 0.76rem;
     }
     
     .nav-btn i {
@@ -251,7 +251,9 @@ nav::-webkit-scrollbar {
         }
 
         .btn-danger {
-            background: var(--danger);
+            background: #c52d2d;
+			font-size: 0.75rem;
+			width: auto !important;
         }
 
         .btn-danger:hover {
@@ -337,7 +339,7 @@ nav::-webkit-scrollbar {
         .dishes-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 15px;
+            //gap: 15px;
             margin-top: 15px;
         }
 
@@ -348,6 +350,7 @@ nav::-webkit-scrollbar {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s ease;
             border: 1px solid #FFE4E9;
+			margin-bottom: 10px;
         }
 
         .dish-card:hover {
@@ -641,7 +644,7 @@ nav::-webkit-scrollbar {
             }
             
             nav {
-                width: 100%;
+                width: 115%;
                 justify-content: center;
             }
             
@@ -753,13 +756,8 @@ nav::-webkit-scrollbar {
     <header>
         <div class="container">
             <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-utensils"></i>
-                    <h1>Планировщик питания</h1>
-                </div>
                 <nav>
                     <button class="nav-btn active" data-target="dishes-section"><i class="fas fa-book"></i> Блюда</button>
-                    <button class="nav-btn" data-target="add-dish-section"><i class="fas fa-plus"></i> Добавить</button>
                     <button class="nav-btn" data-target="week-plan-section"><i class="fas fa-calendar-alt"></i> План</button>
                     <button class="nav-btn" data-target="fridge-section"><i class="fas fa-refrigerator"></i>❄️ Холодильник</button>
                     <button class="nav-btn" data-target="shopping-list-section"><i class="fas fa-shopping-cart"></i> Покупки</button>
@@ -772,6 +770,7 @@ nav::-webkit-scrollbar {
         <!-- Секция с блюдами -->
         <section id="dishes-section" class="section active">
             <h2>Мои блюда</h2>
+			<button class="nav-btn" data-target="add-dish-section"><i class="fas fa-plus"></i> Добавить</button>
             <div class="dishes-grid" id="dishes-container">
                 <!-- Блюда будут добавляться динамически -->
             </div>
@@ -860,7 +859,7 @@ nav::-webkit-scrollbar {
             </button>
         </section>
         
-        <div class="form-group" style="margin-top: 30px; text-align: center;">
+        <div class="form-group" style="margin-top: 20px; text-align: right;">
             <button class="btn btn-danger" id="clear-all-data">
                 <i class="fas fa-trash-alt"></i> Очистить все данные
             </button>
