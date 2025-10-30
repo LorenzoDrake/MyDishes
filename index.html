@@ -834,6 +834,108 @@
         const fridgeSearchResults = document.getElementById('fridge-search-results');
         const fridgeItemsContainer = document.getElementById('fridge-items');
 
+  // Инициализация Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyDcguAmbPrkfHvPnKiD9TtbKkNaXkSbGzU",
+    authDomain: "mydishes-60046.firebaseapp.com",
+    projectId: "mydishes-60046",
+    storageBucket: "mydishes-60046.firebasestorage.app",
+    messagingSenderId: "625904144384",
+    appId: "1:625904144384:web:8c98a6ea3e6c3d06c4c8e5",
+    measurementId: "G-JSMF6HSHR4"
+  };
+
+  // Инициализируем Firebase
+  try {
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Функция для сохранения всех данных в Firebase
+    function saveAllDataToFirebase() {
+      const userKey = 'anonymousUser';
+      
+      const allData = {
+        dishes: dishes,
+        weekPlan: weekPlan,
+        fridgeItems: fridgeItems,
+        shoppingList: shoppingList,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      database.ref('users/' + userKey).set(allData)
+        .then(() => {
+          console.log('Данные сохранены в Firebase');
+        })
+        .catch((error) => {
+          console.error('Ошибка сохранения в Firebase:', error);
+        });
+    }
+
+    // Функция для загрузки данных из Firebase
+    function loadDataFromFirebase() {
+      const userKey = 'anonymousUser';
+      
+      database.ref('users/' + userKey).once('value')
+        .then((snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            if (data.dishes) dishes = data.dishes;
+            if (data.weekPlan) weekPlan = data.weekPlan;
+            if (data.fridgeItems) fridgeItems = data.fridgeItems;
+            if (data.shoppingList) shoppingList = data.shoppingList;
+            
+            saveDishes();
+            saveWeekPlan();
+            saveFridgeItems();
+            saveShoppingList();
+            
+            loadDishes();
+            loadWeekPlan();
+            loadFridgeItems();
+            loadShoppingList();
+            
+            console.log('Данные загружены из Firebase');
+          }
+        })
+        .catch((error) => {
+          console.error('Ошибка загрузки из Firebase:', error);
+        });
+    }
+
+    // Переопределяем функции сохранения
+    const originalSaveDishes = saveDishes;
+    saveDishes = function() {
+      originalSaveDishes();
+      saveAllDataToFirebase();
+    };
+
+    const originalSaveWeekPlan = saveWeekPlan;
+    saveWeekPlan = function() {
+      originalSaveWeekPlan();
+      saveAllDataToFirebase();
+    };
+
+    const originalSaveFridgeItems = saveFridgeItems;
+    saveFridgeItems = function() {
+      originalSaveFridgeItems();
+      saveAllDataToFirebase();
+    };
+
+    const originalSaveShoppingList = saveShoppingList;
+    saveShoppingList = function() {
+      originalSaveShoppingList();
+      saveAllDataToFirebase();
+    };
+
+    // Загружаем данные при старте
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(loadDataFromFirebase, 1000);
+    });
+
+  } catch (error) {
+    console.log('Firebase инициализация пропущена:', error);
+  }
+		
         // Инициализация приложения
         document.addEventListener('DOMContentLoaded', function() {
             // Навигация между секциями
@@ -1461,102 +1563,6 @@
             }
         }
 		
-// Инициализация Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyDcguAmbPrkfHvPnKiD9TtbKkNaXkSbGzU",
-    authDomain: "mydishes-60046.firebaseapp.com",
-    projectId: "mydishes-60046",
-    storageBucket: "mydishes-60046.firebasestorage.app",
-    messagingSenderId: "625904144384",
-    appId: "1:625904144384:web:8c98a6ea3e6c3d06c4c8e5",
-    measurementId: "G-JSMF6HSHR4"
-  };
-
-  // Инициализируем Firebase
-  firebase.initializeApp(firebaseConfig);
-  const database = firebase.database();
-
-  // Функция для сохранения всех данных в Firebase
-  function saveAllDataToFirebase() {
-    const userKey = 'anonymousUser'; // Используем фиксированный ключ для анонимного пользователя
-    
-    const allData = {
-      dishes: dishes,
-      weekPlan: weekPlan,
-      fridgeItems: fridgeItems,
-      shoppingList: shoppingList,
-      lastUpdated: new Date().toISOString()
-    };
-    
-    database.ref('users/' + userKey).set(allData)
-      .then(() => {
-        console.log('Данные сохранены в Firebase');
-      })
-      .catch((error) => {
-        console.error('Ошибка сохранения в Firebase:', error);
-      });
-  }
-
-  // Функция для загрузки данных из Firebase
-  function loadDataFromFirebase() {
-	// Добавляем загрузку из Firebase после инициализации DOM
-    setTimeout(loadDataFromFirebase, 1000);
-    const userKey = 'anonymousUser';
-    
-    database.ref('users/' + userKey).once('value')
-      .then((snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          // Обновляем локальные данные
-          if (data.dishes) dishes = data.dishes;
-          if (data.weekPlan) weekPlan = data.weekPlan;
-          if (data.fridgeItems) fridgeItems = data.fridgeItems;
-          if (data.shoppingList) shoppingList = data.shoppingList;
-          
-          // Сохраняем в localStorage как резервную копию
-          saveDishes();
-          saveWeekPlan();
-          saveFridgeItems();
-          saveShoppingList();
-          
-          // Обновляем интерфейс
-          loadDishes();
-          loadWeekPlan();
-          loadFridgeItems();
-          loadShoppingList();
-          
-          console.log('Данные загружены из Firebase');
-        }
-      })
-      .catch((error) => {
-        console.error('Ошибка загрузки из Firebase:', error);
-      });
-  }
-
-  // Модифицируем функции сохранения для автоматической синхронизации с Firebase
-  const originalSaveDishes = saveDishes;
-  saveDishes = function() {
-    originalSaveDishes();
-    saveAllDataToFirebase();
-  };
-
-  const originalSaveWeekPlan = saveWeekPlan;
-  saveWeekPlan = function() {
-    originalSaveWeekPlan();
-    saveAllDataToFirebase();
-  };
-
-  const originalSaveFridgeItems = saveFridgeItems;
-  saveFridgeItems = function() {
-    originalSaveFridgeItems();
-    saveAllDataToFirebase();
-  };
-
-  const originalSaveShoppingList = saveShoppingList;
-  saveShoppingList = function() {
-    originalSaveShoppingList();
-    saveAllDataToFirebase();
-  };
   
     </script>
 </body>
