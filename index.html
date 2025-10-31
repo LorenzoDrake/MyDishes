@@ -27,13 +27,14 @@
             --safe-area-inset-bottom: env(safe-area-inset-bottom);
         }
 
-        body {
-            background-color: #FFF9FB; /* Светло-розовый фон */
-            color: var(--dark);
-            line-height: 1.6;
-            padding-top: var(--safe-area-inset-top);
-            padding-bottom: var(--safe-area-inset-bottom);
-        }
+body {
+    background: linear-gradient(135deg, #fff0f5 0%, #ffe4ec 25%, #ffd9e3 50%, #ffceda 75%, #ffc2d1 100%);
+    color: var(--dark);
+    line-height: 1.6;
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+    min-height: 100vh;
+}
 
         .container {
             max-width: 1200px;
@@ -801,6 +802,10 @@ nav::-webkit-scrollbar {
     0% { transform: translate(-50%, -50%) rotate(0deg); }
     100% { transform: translate(-50%, -50%) rotate(360deg); }
 }
+
+.nav-btn[data-target="fridge-section"] i {
+    /* Заменить содержимое */
+}
     </style>
 </head>
 <body>
@@ -810,7 +815,9 @@ nav::-webkit-scrollbar {
                 <nav>
                     <button class="nav-btn active" data-target="dishes-section"><i class="fas fa-book"></i> Блюда</button>
                     <button class="nav-btn" data-target="week-plan-section"><i class="fas fa-calendar-alt"></i> План</button>
-                    <button class="nav-btn" data-target="fridge-section"><i class="fas fa-refrigerator"></i>❄️ Холодильник</button>
+                    <button class="nav-btn" data-target="fridge-section">
+    <i class="fas fa-snowflake"></i> Холодильник
+</button>
                     <button class="nav-btn" data-target="shopping-list-section"><i class="fas fa-shopping-cart"></i> Покупки</button>
                 </nav>
             </div>
@@ -851,7 +858,9 @@ nav::-webkit-scrollbar {
                         <!-- Выбранные ингредиенты будут добавляться здесь -->
                     </div>
                 </div>
-                
+                <button type="button" class="btn btn-secondary" id="back-to-dishes" style="margin-bottom: 10px;">
+    <i class="fas fa-arrow-left"></i> Назад к списку блюд
+</button>
                 <button type="submit" class="btn"><i class="fas fa-save"></i> Сохранить блюдо</button>
 				<button type="button" class="btn btn-secondary" id="cancel-edit" style="display: none; margin-top: 10px;">
 					<i class="fas fa-times"></i> Отменить редактирование
@@ -1470,6 +1479,7 @@ const ingredientsDB = [
 	// Обработчик отмены редактирования
 document.getElementById('cancel-edit').addEventListener('click', function() {
     resetDishForm();
+    showDishesSection();
 });
         // Навигация между секциями
         navButtons.forEach(button => {
@@ -2489,7 +2499,9 @@ function editDish(dishId) {
 
     // Показываем секцию добавления блюда
     navButtons.forEach(btn => btn.classList.remove('active'));
-    document.querySelector('[data-target="add-dish-section"]').classList.add('active');
+    document.querySelector('[data-target="add-dish-section"]').addEventListener('click', function() {
+    resetDishForm();
+});
     sections.forEach(section => section.classList.remove('active'));
     document.getElementById('add-dish-section').classList.add('active');
     
@@ -2595,6 +2607,17 @@ async function refreshDishImage(dishId) {
         }
     }
     return false;
+}
+
+document.getElementById('back-to-dishes').addEventListener('click', function() {
+    showDishesSection();
+});
+
+function showDishesSection() {
+    navButtons.forEach(btn => btn.classList.remove('active'));
+    document.querySelector('[data-target="dishes-section"]').classList.add('active');
+    sections.forEach(section => section.classList.remove('active'));
+    document.getElementById('dishes-section').classList.add('active');
 }
 </script>
 </body>
